@@ -1,1165 +1,595 @@
-import React, { useState, useEffect } from 'react';
-import { Camera, TrendingUp, Award, MessageCircle, Bell, Calendar, Plus, Dog, CheckCircle, XCircle, Home, BarChart3, Users, BookOpen, Heart, Zap, MapPin, Cloud, Utensils, Activity, Download, Phone, AlertCircle, Sparkles, Target, Clock, Star, Moon, Sun, FileText, DollarSign, Trophy, Flame, BookMarked, AlarmClock, Settings, Edit } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-
-const App = () => {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [dogs, setDogs] = useState([]);
-  const [selectedDog, setSelectedDog] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [meals, setMeals] = useState([]);
-  const [health, setHealth] = useState([]);
-  const [community, setCommunity] = useState([]);
-  const [journal, setJournal] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [customAlarms, setCustomAlarms] = useState([]);
-  const [customSchedules, setCustomSchedules] = useState({});
-  const [challenges, setChallenges] = useState([
-    { id: 1, title: '5 Consecutive Successes', target: 5, current: 0, reward: 50, active: true },
-    { id: 2, title: '7-Day Perfect Week', target: 7, current: 0, reward: 100, active: true },
-    { id: 3, title: 'Early Bird (5 AM successes)', target: 3, current: 0, reward: 30, active: true }
-  ]);
-  const [users, setUsers] = useState([{ id: 'owner', name: 'You', role: 'owner' }]);
-  const [currentUser, setCurrentUser] = useState('owner');
-  const [notifications, setNotifications] = useState([]);
-  const [emergencyMode, setEmergencyMode] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  
-  const [showAddDog, setShowAddDog] = useState(false);
-  const [showLogger, setShowLogger] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const [showMealLogger, setShowMealLogger] = useState(false);
-  const [showHealthLogger, setShowHealthLogger] = useState(false);
-  const [showCommunityPost, setShowCommunityPost] = useState(false);
-  const [showPhotoAnalysis, setShowPhotoAnalysis] = useState(false);
-  const [showExpertBooking, setShowExpertBooking] = useState(false);
-  const [showJournalEntry, setShowJournalEntry] = useState(false);
-  const [showExpenseLogger, setShowExpenseLogger] = useState(false);
-  const [showAlarmSetter, setShowAlarmSetter] = useState(false);
-  const [showScheduleEditor, setShowScheduleEditor] = useState(false);
-  const [completedScheduleItems, setCompletedScheduleItems] = useState({});
-  
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [editingSchedule, setEditingSchedule] = useState([]);
-
-  const [dogForm, setDogForm] = useState({ name: '', breed: '', age: '', weight: '', size: '' });
-  const [loggerForm, setLoggerForm] = useState({ notes: '', location: '', weather: '', indoorOutdoor: 'outdoor' });
-  const [mealForm, setMealForm] = useState({ type: 'meal', amount: '', time: '' });
-  const [healthForm, setHealthForm] = useState({ type: 'medication', notes: '', date: '' });
-  const [postForm, setPostForm] = useState({ title: '', content: '', photo: null });
-  const [journalForm, setJournalForm] = useState({ title: '', content: '', mood: 'neutral' });
-  const [expenseForm, setExpenseForm] = useState({ category: 'supplies', amount: '', description: '' });
-  const [alarmForm, setAlarmForm] = useState({ time: '', label: '', repeat: 'daily' });
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const results = await Promise.all([
-        window.storage.get('dogs-v2'),
-        window.storage.get('events-v2'),
-        window.storage.get('meals-v2'),
-        window.storage.get('health-v2'),
-        window.storage.get('community-v2'),
-        window.storage.get('users-v2'),
-        window.storage.get('journal-v2'),
-        window.storage.get('expenses-v2'),
-        window.storage.get('customAlarms-v2'),
-        window.storage.get('darkMode-v2'),
-        window.storage.get('challenges-v2'),
-        window.storage.get('customSchedules-v2'),
-        window.storage.get('completedScheduleItems-v2')
-      ]);
-
-      if (results[0]?.value) {
-        const loadedDogs = JSON.parse(results[0].value);
-        setDogs(loadedDogs);
-        if (loadedDogs.length > 0) setSelectedDog(loadedDogs[0].id);
-      }
-      if (results[1]?.value) setEvents(JSON.parse(results[1].value));
-      if (results[2]?.value) setMeals(JSON.parse(results[2].value));
-      if (results[3]?.value) setHealth(JSON.parse(results[3].value));
-      if (results[4]?.value) setCommunity(JSON.parse(results[4].value));
-      if (results[5]?.value) setUsers(JSON.parse(results[5].value));
-      if (results[6]?.value) setJournal(JSON.parse(results[6].value));
-      if (results[7]?.value) setExpenses(JSON.parse(results[7].value));
-      if (results[8]?.value) setCustomAlarms(JSON.parse(results[8].value));
-      if (results[9]?.value) setDarkMode(JSON.parse(results[9].value));
-      if (results[10]?.value) setChallenges(JSON.parse(results[10].value));
-      if (results[11]?.value) setCustomSchedules(JSON.parse(results[11].value));
-      if (results[12]?.value) setCompletedScheduleItems(JSON.parse(results[12].value));
-    } catch (error) {
-      console.log('Loading initial data');
-    }
-    setIsLoading(false);
-  };
-
-  const saveData = async () => {
-    try {
-      await Promise.all([
-        window.storage.set('dogs-v2', JSON.stringify(dogs)),
-        window.storage.set('events-v2', JSON.stringify(events)),
-        window.storage.set('meals-v2', JSON.stringify(meals)),
-        window.storage.set('health-v2', JSON.stringify(health)),
-        window.storage.set('community-v2', JSON.stringify(community)),
-        window.storage.set('users-v2', JSON.stringify(users)),
-        window.storage.set('journal-v2', JSON.stringify(journal)),
-        window.storage.set('expenses-v2', JSON.stringify(expenses)),
-        window.storage.set('customAlarms-v2', JSON.stringify(customAlarms)),
-        window.storage.set('darkMode-v2', JSON.stringify(darkMode)),
-        window.storage.set('challenges-v2', JSON.stringify(challenges)),
-        window.storage.set('customSchedules-v2', JSON.stringify(customSchedules)),
-        window.storage.set('completedScheduleItems-v2', JSON.stringify(completedScheduleItems))
-      ]);
-    } catch (error) {
-      console.error('Save failed:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (!isLoading) saveData();
-  }, [dogs, events, meals, health, community, users, journal, expenses, customAlarms, darkMode, challenges, customSchedules, completedScheduleItems]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    addNotification(`${!darkMode ? 'Dark' : 'Light'} mode enabled 🌙`, 'info');
-  };
-
-  const addNotification = (message, type = 'info') => {
-    const notification = {
-      id: Date.now().toString(),
-      message,
-      type,
-      timestamp: new Date().toISOString()
-    };
-    setNotifications(prev => [...prev, notification].slice(-10));
-  };
-
-  const handleAddDog = async () => {
-    if (!dogForm.name || !dogForm.breed || !dogForm.age || !dogForm.weight || !dogForm.size) return;
-
-    const newDog = {
-      id: Date.now().toString(),
-      ...dogForm,
-      age: parseInt(dogForm.age),
-      weight: parseInt(dogForm.weight),
-      addedDate: new Date().toISOString(),
-      points: 0,
-      badges: [],
-      streak: 0,
-      lastSuccessDate: null
-    };
-    
-    setDogs([...dogs, newDog]);
-    setSelectedDog(newDog.id);
-    setShowAddDog(false);
-    setDogForm({ name: '', breed: '', age: '', weight: '', size: '' });
-    addNotification(`${newDog.name} added successfully! 🎉`, 'success');
-  };
-
-  const logEvent = async (eventType, photo = null) => {
-    const newEvent = {
-      id: Date.now().toString(),
-      dogId: selectedDog,
-      userId: currentUser,
-      type: eventType,
-      timestamp: new Date().toISOString(),
-      notes: loggerForm.notes,
-      location: loggerForm.location,
-      weather: loggerForm.weather,
-      indoorOutdoor: loggerForm.indoorOutdoor,
-      photo: photoPreview
-    };
-    
-    setEvents([...events, newEvent]);
-    
-    if (eventType === 'success') {
-      setDogs(dogs.map(d => {
-        if (d.id === selectedDog) {
-          const newPoints = d.points + 10;
-          const newBadges = [...d.badges];
-          
-          const lastDate = d.lastSuccessDate ? new Date(d.lastSuccessDate).toDateString() : null;
-          const today = new Date().toDateString();
-          const yesterday = new Date(Date.now() - 86400000).toDateString();
-          
-          let newStreak = d.streak;
-          if (lastDate === yesterday) {
-            newStreak++;
-          } else if (lastDate !== today) {
-            newStreak = 1;
-          }
-          
-          if (newPoints >= 50 && !newBadges.includes('first-steps')) newBadges.push('first-steps');
-          if (newPoints >= 100 && !newBadges.includes('potty-pro')) newBadges.push('potty-pro');
-          if (newPoints >= 250 && !newBadges.includes('master-trainer')) newBadges.push('master-trainer');
-          if (newStreak >= 7 && !newBadges.includes('week-warrior')) newBadges.push('week-warrior');
-          if (newStreak >= 30 && !newBadges.includes('month-master')) newBadges.push('month-master');
-          
-          return { ...d, points: newPoints, badges: newBadges, streak: newStreak, lastSuccessDate: today };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PawtyTime - Dog Potty Training Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        return d;
-      }));
-      
-      addNotification(`Success logged! +10 points ✨`, 'success');
-    }
-    
-    setShowLogger(false);
-    setLoggerForm({ notes: '', location: '', weather: '', indoorOutdoor: 'outdoor' });
-    setPhotoFile(null);
-    setPhotoPreview(null);
-  };
-
-  const quickLogSuccess = (reason, scheduleTime = null) => {
-    const newEvent = {
-      id: Date.now().toString(),
-      dogId: selectedDog,
-      userId: currentUser,
-      type: 'success',
-      timestamp: new Date().toISOString(),
-      notes: reason,
-      location: '',
-      weather: '',
-      indoorOutdoor: 'outdoor',
-      photo: null
-    };
-    
-    setEvents([...events, newEvent]);
-    
-    // Mark schedule item as complete if scheduleTime is provided
-    if (scheduleTime) {
-      const today = new Date().toDateString();
-      const key = `${selectedDog}-${today}`;
-      const completed = completedScheduleItems[key] || [];
-      if (!completed.includes(scheduleTime)) {
-        setCompletedScheduleItems({
-          ...completedScheduleItems,
-          [key]: [...completed, scheduleTime]
-        });
-      }
-    }
-    
-    setDogs(dogs.map(d => {
-      if (d.id === selectedDog) {
-        const newPoints = d.points + 10;
-        const newBadges = [...d.badges];
-        
-        const lastDate = d.lastSuccessDate ? new Date(d.lastSuccessDate).toDateString() : null;
-        const today = new Date().toDateString();
-        const yesterday = new Date(Date.now() - 86400000).toDateString();
-        
-        let newStreak = d.streak;
-        if (lastDate === yesterday) {
-          newStreak++;
-        } else if (lastDate !== today) {
-          newStreak = 1;
+        .animate-spin {
+            animation: spin 1s linear infinite;
         }
-        
-        if (newPoints >= 50 && !newBadges.includes('first-steps')) newBadges.push('first-steps');
-        if (newPoints >= 100 && !newBadges.includes('potty-pro')) newBadges.push('potty-pro');
-        if (newPoints >= 250 && !newBadges.includes('master-trainer')) newBadges.push('master-trainer');
-        if (newStreak >= 7 && !newBadges.includes('week-warrior')) newBadges.push('week-warrior');
-        if (newStreak >= 30 && !newBadges.includes('month-master')) newBadges.push('month-master');
-        
-        return { ...d, points: newPoints, badges: newBadges, streak: newStreak, lastSuccessDate: today };
-      }
-      return d;
-    }));
-    
-    addNotification(`Success logged! +10 points ✨`, 'success');
-  };
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-25%); }
+            50% { transform: translateY(0); }
+        }
+        .animate-bounce {
+            animation: bounce 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  const logMeal = () => {
-    const newMeal = {
-      id: Date.now().toString(),
-      dogId: selectedDog,
-      type: mealForm.type,
-      amount: mealForm.amount,
-      timestamp: mealForm.time || new Date().toISOString()
-    };
-    setMeals([...meals, newMeal]);
-    setShowMealLogger(false);
-    setMealForm({ type: 'meal', amount: '', time: '' });
-    
-    const currentDog = dogs.find(d => d.id === selectedDog);
-    if (currentDog && mealForm.type === 'meal') {
-      const predictedTime = new Date(Date.now() + (45 * 60 * 1000));
-      addNotification(`${currentDog.name} will likely need to go around ${predictedTime.toLocaleTimeString()}`, 'info');
-    }
-  };
+    <script type="module">
+        // Simple storage mock using localStorage
+        window.storage = {
+            get: async (key) => {
+                try {
+                    const value = localStorage.getItem(key);
+                    return value ? { value } : null;
+                } catch {
+                    return null;
+                }
+            },
+            set: async (key, value) => {
+                try {
+                    localStorage.setItem(key, value);
+                    return { key, value };
+                } catch {
+                    return null;
+                }
+            }
+        };
 
-  const openScheduleEditor = () => {
-    const currentSchedule = getSchedule(currentDog);
-    setEditingSchedule(currentSchedule);
-    setShowScheduleEditor(true);
-  };
+        class PawtyTimeApp {
+            constructor() {
+                this.state = {
+                    dogs: [],
+                    selectedDog: null,
+                    events: [],
+                    meals: [],
+                    customSchedules: {},
+                    completedScheduleItems: {},
+                    darkMode: false,
+                    isLoading: true,
+                    showAddDog: false,
+                    showLogger: false,
+                    currentView: 'dashboard',
+                    notifications: [],
+                    dogForm: { name: '', breed: '', age: '', weight: '', size: '' },
+                    loggerForm: { notes: '', location: '', indoorOutdoor: 'outdoor' }
+                };
+                this.init();
+            }
 
-  const saveCustomSchedule = () => {
-    const newSchedules = { ...customSchedules };
-    newSchedules[selectedDog] = editingSchedule;
-    setCustomSchedules(newSchedules);
-    setShowScheduleEditor(false);
-    addNotification('Custom schedule saved! 📅', 'success');
-  };
+            async init() {
+                await this.loadData();
+                this.render();
+            }
 
-  const addScheduleSlot = () => {
-    setEditingSchedule([...editingSchedule, {
-      time: '12:00 PM',
-      reason: 'Custom break',
-      priority: 'medium'
-    }]);
-  };
+            async loadData() {
+                try {
+                    const [dogsRes, eventsRes, mealsRes, schedulesRes, completedRes, darkModeRes] = await Promise.all([
+                        window.storage.get('dogs-v3'),
+                        window.storage.get('events-v3'),
+                        window.storage.get('meals-v3'),
+                        window.storage.get('customSchedules-v3'),
+                        window.storage.get('completedScheduleItems-v3'),
+                        window.storage.get('darkMode-v3')
+                    ]);
 
-  const removeScheduleSlot = (index) => {
-    setEditingSchedule(editingSchedule.filter((_, i) => i !== index));
-  };
+                    if (dogsRes?.value) {
+                        this.state.dogs = JSON.parse(dogsRes.value);
+                        if (this.state.dogs.length > 0) {
+                            this.state.selectedDog = this.state.dogs[0].id;
+                        }
+                    }
+                    if (eventsRes?.value) this.state.events = JSON.parse(eventsRes.value);
+                    if (mealsRes?.value) this.state.meals = JSON.parse(mealsRes.value);
+                    if (schedulesRes?.value) this.state.customSchedules = JSON.parse(schedulesRes.value);
+                    if (completedRes?.value) this.state.completedScheduleItems = JSON.parse(completedRes.value);
+                    if (darkModeRes?.value) this.state.darkMode = JSON.parse(darkModeRes.value);
+                } catch (error) {
+                    console.log('Loading initial data', error);
+                }
+                this.state.isLoading = false;
+            }
 
-  const updateScheduleSlot = (index, field, value) => {
-    const updated = [...editingSchedule];
-    updated[index] = { ...updated[index], [field]: value };
-    setEditingSchedule(updated);
-  };
+            async saveData() {
+                try {
+                    await Promise.all([
+                        window.storage.set('dogs-v3', JSON.stringify(this.state.dogs)),
+                        window.storage.set('events-v3', JSON.stringify(this.state.events)),
+                        window.storage.set('meals-v3', JSON.stringify(this.state.meals)),
+                        window.storage.set('customSchedules-v3', JSON.stringify(this.state.customSchedules)),
+                        window.storage.set('completedScheduleItems-v3', JSON.stringify(this.state.completedScheduleItems)),
+                        window.storage.set('darkMode-v3', JSON.stringify(this.state.darkMode))
+                    ]);
+                } catch (error) {
+                    console.error('Save failed:', error);
+                }
+            }
 
-  const resetToAISchedule = () => {
-    const newSchedules = { ...customSchedules };
-    delete newSchedules[selectedDog];
-    setCustomSchedules(newSchedules);
-    setShowScheduleEditor(false);
-    addNotification('Reset to AI schedule! 🤖', 'success');
-  };
+            addNotification(message) {
+                this.state.notifications.push({
+                    id: Date.now(),
+                    message,
+                    timestamp: new Date()
+                });
+                this.state.notifications = this.state.notifications.slice(-5);
+                this.render();
+                setTimeout(() => {
+                    this.state.notifications.shift();
+                    this.render();
+                }, 3000);
+            }
 
-  const generateVetReport = () => {
-    const currentDog = dogs.find(d => d.id === selectedDog);
-    const dogEvents = events.filter(e => e.dogId === selectedDog);
-    const dogHealth = health.filter(h => h.dogId === selectedDog);
-    
-    let report = `VETERINARY REPORT - ${currentDog.name}\n`;
-    report += `Generated: ${new Date().toLocaleString()}\n\n`;
-    report += `BASIC INFORMATION\n`;
-    report += `Name: ${currentDog.name}\n`;
-    report += `Breed: ${currentDog.breed}\n`;
-    report += `Age: ${currentDog.age} months\n`;
-    report += `Weight: ${currentDog.weight} lbs\n\n`;
-    report += `TRAINING PROGRESS\n`;
-    report += `Success Rate: ${getSuccessRate()}%\n`;
-    report += `Indoor Accident Rate: ${getIndoorAccidentRate()}%\n`;
-    report += `Current Streak: ${currentDog.streak} days\n\n`;
-    report += `HEALTH RECORDS\n`;
-    dogHealth.forEach(h => {
-      report += `${new Date(h.date).toLocaleDateString()}: ${h.type} - ${h.notes}\n`;
-    });
-    
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentDog.name}_Vet_Report.txt`;
-    a.click();
-    addNotification('Vet report generated! 🏥', 'success');
-  };
+            async addDog() {
+                const { name, breed, age, weight, size } = this.state.dogForm;
+                if (!name || !breed || !age || !weight || !size) return;
 
-  const sendChatMessage = async () => {
-    if (!chatInput.trim() || isSending) return;
-    
-    const currentDog = dogs.find(d => d.id === selectedDog);
-    const userMessage = { role: 'user', content: chatInput };
-    setChatMessages([...chatMessages, userMessage]);
-    const messageToSend = chatInput;
-    setChatInput('');
-    setIsSending(true);
+                const newDog = {
+                    id: Date.now().toString(),
+                    name,
+                    breed,
+                    age: parseInt(age),
+                    weight: parseInt(weight),
+                    size,
+                    addedDate: new Date().toISOString(),
+                    points: 0,
+                    streak: 0,
+                    lastSuccessDate: null
+                };
 
-    try {
-      const context = currentDog ? `Training ${currentDog.name}, ${currentDog.age} months, ${currentDog.breed}. Streak: ${currentDog.streak} days. ` : '';
-      
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [...chatMessages, { role: 'user', content: context + messageToSend }],
-          system: 'You are an expert dog trainer. Provide practical, encouraging advice. Keep responses concise.'
-        })
-      });
+                this.state.dogs.push(newDog);
+                this.state.selectedDog = newDog.id;
+                this.state.showAddDog = false;
+                this.state.dogForm = { name: '', breed: '', age: '', weight: '', size: '' };
+                await this.saveData();
+                this.addNotification(`${newDog.name} added successfully! 🎉`);
+                this.render();
+            }
 
-      const data = await response.json();
-      setChatMessages([...chatMessages, userMessage, { role: 'assistant', content: data.content[0].text }]);
-    } catch (error) {
-      setChatMessages([...chatMessages, userMessage, { role: 'assistant', content: 'Connection error. Please try again.' }]);
-    }
-    setIsSending(false);
-  };
+            async logSuccess(scheduleTime = null) {
+                const event = {
+                    id: Date.now().toString(),
+                    dogId: this.state.selectedDog,
+                    type: 'success',
+                    timestamp: new Date().toISOString(),
+                    notes: this.state.loggerForm.notes,
+                    location: this.state.loggerForm.location,
+                    indoorOutdoor: this.state.loggerForm.indoorOutdoor
+                };
 
-  const getSchedule = (dog) => {
-    if (!dog) return [];
-    
-    // Check for custom schedule
-    if (customSchedules[dog.id]) {
-      return customSchedules[dog.id];
-    }
-    
-    // Generate AI schedule
-    const baseIntervals = dog.age <= 3 ? 2 : dog.age <= 6 ? 3 : 4;
-    const schedule = [];
-    
-    schedule.push({ time: '7:00 AM', reason: 'Morning wake-up', priority: 'high' });
-    
-    let currentTime = 7;
-    for (let i = 0; i < 24 / baseIntervals; i++) {
-      currentTime += baseIntervals;
-      if (currentTime < 22) {
-        const hour = currentTime > 12 ? currentTime - 12 : currentTime;
-        const period = currentTime >= 12 ? 'PM' : 'AM';
-        schedule.push({ 
-          time: `${hour}:00 ${period}`, 
-          reason: 'Regular interval',
-          priority: 'medium'
-        });
-      }
-    }
-    
-    schedule.push({ time: '10:00 PM', reason: 'Before bedtime', priority: 'high' });
-    return schedule;
-  };
+                this.state.events.push(event);
 
-  const isScheduleItemCompleted = (time) => {
-    const today = new Date().toDateString();
-    const key = `${selectedDog}-${today}`;
-    const completed = completedScheduleItems[key] || [];
-    return completed.includes(time);
-  };
+                // Mark schedule as complete
+                if (scheduleTime) {
+                    const today = new Date().toDateString();
+                    const key = `${this.state.selectedDog}-${today}`;
+                    if (!this.state.completedScheduleItems[key]) {
+                        this.state.completedScheduleItems[key] = [];
+                    }
+                    if (!this.state.completedScheduleItems[key].includes(scheduleTime)) {
+                        this.state.completedScheduleItems[key].push(scheduleTime);
+                    }
+                }
 
-  const getProgressData = () => {
-    if (!selectedDog) return [];
-    
-    const dogEvents = events.filter(e => e.dogId === selectedDog);
-    const last7Days = [...Array(7)].map((_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      return date.toISOString().split('T')[0];
-    });
-    
-    return last7Days.map(date => {
-      const dayEvents = dogEvents.filter(e => e.timestamp.startsWith(date));
-      return {
-        date: new Date(date).toLocaleDateString('en', { weekday: 'short' }),
-        successes: dayEvents.filter(e => e.type === 'success').length,
-        accidents: dayEvents.filter(e => e.type === 'accident').length
-      };
-    });
-  };
+                // Update dog points
+                this.state.dogs = this.state.dogs.map(d => {
+                    if (d.id === this.state.selectedDog) {
+                        return {
+                            ...d,
+                            points: d.points + 10,
+                            lastSuccessDate: new Date().toDateString()
+                        };
+                    }
+                    return d;
+                });
 
-  const getSuccessRate = () => {
-    if (!selectedDog) return 0;
-    const dogEvents = events.filter(e => e.dogId === selectedDog);
-    const successes = dogEvents.filter(e => e.type === 'success').length;
-    const total = dogEvents.length;
-    return total > 0 ? Math.round((successes / total) * 100) : 0;
-  };
+                this.state.showLogger = false;
+                this.state.loggerForm = { notes: '', location: '', indoorOutdoor: 'outdoor' };
+                await this.saveData();
+                this.addNotification('Success logged! +10 points ✨');
+                this.render();
+            }
 
-  const getIndoorAccidentRate = () => {
-    if (!selectedDog) return 0;
-    const accidents = events.filter(e => e.dogId === selectedDog && e.type === 'accident');
-    const indoorAccidents = accidents.filter(e => e.indoorOutdoor === 'indoor');
-    return accidents.length > 0 ? Math.round((indoorAccidents.length / accidents.length) * 100) : 0;
-  };
+            getSchedule() {
+                const dog = this.state.dogs.find(d => d.id === this.state.selectedDog);
+                if (!dog) return [];
 
-  const exportData = () => {
-    const currentDog = dogs.find(d => d.id === selectedDog);
-    const dogEvents = events.filter(e => e.dogId === selectedDog);
-    
-    let csv = 'Date,Time,Type,Indoor/Outdoor,Location,Weather,Notes\n';
-    dogEvents.forEach(e => {
-      const date = new Date(e.timestamp);
-      csv += `${date.toLocaleDateString()},${date.toLocaleTimeString()},${e.type},${e.indoorOutdoor || ''},${e.location || ''},${e.weather || ''},${e.notes || ''}\n`;
-    });
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentDog?.name}_data.csv`;
-    a.click();
-    addNotification('Data exported! 📊', 'success');
-  };
+                if (this.state.customSchedules[dog.id]) {
+                    return this.state.customSchedules[dog.id];
+                }
 
-  const currentDog = dogs.find(d => d.id === selectedDog);
+                const baseIntervals = dog.age <= 3 ? 2 : dog.age <= 6 ? 3 : 4;
+                const schedule = [];
 
-  if (isLoading) {
-    return (
-      <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50'} flex items-center justify-center`}>
-        <div className="text-center">
-          <div className={`w-20 h-20 border-4 ${darkMode ? 'border-violet-900 border-t-violet-400' : 'border-violet-200 border-t-violet-600'} rounded-full animate-spin mx-auto mb-4`}></div>
-          <div className={`text-xl font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Loading PawtyTime...</div>
-        </div>
-      </div>
-    );
-  }
+                schedule.push({ time: '7:00 AM', reason: 'Morning wake-up', priority: 'high' });
 
-  const bgClass = darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50';
-  const cardClass = darkMode ? 'bg-gray-800/70' : 'bg-white/70';
-  const textClass = darkMode ? 'text-gray-100' : 'text-gray-800';
-  const textSecondaryClass = darkMode ? 'text-gray-400' : 'text-gray-600';
+                let currentTime = 7;
+                for (let i = 0; i < 24 / baseIntervals; i++) {
+                    currentTime += baseIntervals;
+                    if (currentTime < 22) {
+                        const hour = currentTime > 12 ? currentTime - 12 : currentTime;
+                        const period = currentTime >= 12 ? 'PM' : 'AM';
+                        schedule.push({
+                            time: `${hour}:00 ${period}`,
+                            reason: 'Regular interval',
+                            priority: 'medium'
+                        });
+                    }
+                }
 
-  return (
-    <div className={`min-h-screen ${bgClass}`}>
-      {/* Header */}
-      <div className={`sticky top-0 z-30 backdrop-blur-xl ${darkMode ? 'bg-gray-800/70' : 'bg-white/70'} border-b ${darkMode ? 'border-gray-700/20' : 'border-white/20'} shadow-lg`}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Dog className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                  PawtyTime
-                </h1>
-                <p className={`text-xs ${textSecondaryClass}`}>AI-Powered Training</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={toggleDarkMode}
-                className={`p-2.5 rounded-xl transition-all shadow-sm hover:shadow-md ${
-                  darkMode ? 'bg-gray-700 text-yellow-400' : 'bg-white/80 text-gray-600 hover:bg-white'
-                }`}
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-              {dogs.length > 0 && (
-                <select 
-                  value={selectedDog} 
-                  onChange={(e) => setSelectedDog(e.target.value)}
-                  className={`px-4 py-2 ${cardClass} backdrop-blur-sm border ${darkMode ? 'border-gray-700' : 'border-gray-200'} rounded-xl font-medium shadow-sm ${textClass}`}
-                >
-                  {dogs.map(dog => (
-                    <option key={dog.id} value={dog.id}>{dog.name}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+                schedule.push({ time: '10:00 PM', reason: 'Before bedtime', priority: 'high' });
+                return schedule;
+            }
 
-      {/* Notifications */}
-      {notifications.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-lg">
-          <div className="max-w-7xl mx-auto px-6 py-3">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 animate-bounce" />
-              <span className="font-medium">{notifications[notifications.length - 1].message}</span>
-            </div>
-          </div>
-        </div>
-      )}
+            isScheduleItemCompleted(time) {
+                const today = new Date().toDateString();
+                const key = `${this.state.selectedDog}-${today}`;
+                const completed = this.state.completedScheduleItems[key] || [];
+                return completed.includes(time);
+            }
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {dogs.length === 0 ? (
-          <div className="text-center py-20">
-            <div className={`w-32 h-32 ${darkMode ? 'bg-gray-700' : 'bg-gradient-to-br from-violet-100 to-purple-100'} rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl`}>
-              <Dog className={`w-16 h-16 ${darkMode ? 'text-violet-400' : 'text-violet-600'}`} />
-            </div>
-            <h2 className={`text-4xl font-bold mb-4 bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent`}>
-              Welcome to PawtyTime!
-            </h2>
-            <p className={`${textSecondaryClass} mb-8 text-lg max-w-md mx-auto`}>
-              AI-powered dog potty training with indoor/outdoor tracking
-            </p>
-            <button
-              onClick={() => setShowAddDog(true)}
-              className="px-8 py-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all font-semibold text-lg"
-            >
-              <Plus className="w-5 h-5 inline mr-2" />
-              Add Your Dog
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-              {[
-                { icon: TrendingUp, label: 'Success Rate', value: `${getSuccessRate()}%`, gradient: 'from-emerald-500 to-teal-500' },
-                { icon: Award, label: 'Points', value: currentDog?.points || 0, gradient: 'from-amber-500 to-orange-500' },
-                { icon: Zap, label: 'Streak', value: `${currentDog?.streak || 0}d`, gradient: 'from-violet-500 to-purple-500' },
-                { icon: Target, label: 'Successes', value: events.filter(e => e.dogId === selectedDog && e.type === 'success').length, gradient: 'from-blue-500 to-cyan-500' },
-                { icon: Home, label: 'Indoor Rate', value: `${getIndoorAccidentRate()}%`, gradient: 'from-red-500 to-orange-500' },
-                { icon: Users, label: 'Team', value: users.length, gradient: 'from-pink-500 to-rose-500' }
-              ].map((stat, idx) => (
-                <div key={idx} className={`group relative ${cardClass} backdrop-blur-xl rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1`}>
-                  <stat.icon className={`w-6 h-6 mb-3 bg-gradient-to-br ${stat.gradient} bg-clip-text text-transparent`} />
-                  <div className={`text-3xl font-bold ${textClass} mb-1`}>{stat.value}</div>
-                  <div className={`text-xs ${textSecondaryClass} font-medium`}>{stat.label}</div>
-                </div>
-              ))}
-            </div>
+            getSuccessRate() {
+                const dogEvents = this.state.events.filter(e => e.dogId === this.state.selectedDog);
+                const successes = dogEvents.filter(e => e.type === 'success').length;
+                return dogEvents.length > 0 ? Math.round((successes / dogEvents.length) * 100) : 0;
+            }
 
-            {/* Navigation */}
-            <div className="grid grid-cols-4 md:grid-cols-10 gap-3 mb-8">
-              {[
-                { id: 'dashboard', icon: Home, label: 'Home' },
-                { id: 'schedule', icon: Calendar, label: 'Schedule' },
-                { id: 'progress', icon: BarChart3, label: 'Progress' },
-                { id: 'journal', icon: BookMarked, label: 'Journal' },
-                { id: 'gallery', icon: Camera, label: 'Gallery' },
-                { id: 'milestones', icon: Trophy, label: 'Milestones' },
-                { id: 'challenges', icon: Flame, label: 'Challenges' },
-                { id: 'expenses', icon: DollarSign, label: 'Expenses' },
-                { id: 'breed-db', icon: Dog, label: 'Breeds' },
-                { id: 'expert', icon: Phone, label: 'Experts' }
-              ].map(nav => (
-                <button
-                  key={nav.id}
-                  onClick={() => setCurrentView(nav.id)}
-                  className={`relative py-4 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                    currentView === nav.id 
-                      ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-xl' 
-                      : darkMode ? 'bg-gray-700/70 text-gray-300 hover:bg-gray-600 shadow-md' : 'bg-white/70 text-gray-700 hover:bg-white shadow-md'
-                  }`}
-                >
-                  <nav.icon className="w-5 h-5 mx-auto mb-2" />
-                  <div className="text-xs">{nav.label}</div>
-                </button>
-              ))}
-            </div>
+            getCurrentDog() {
+                return this.state.dogs.find(d => d.id === this.state.selectedDog);
+            }
 
-            {/* Dashboard */}
-            {currentView === 'dashboard' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                  <div className={`${cardClass} backdrop-blur-xl rounded-3xl p-8 shadow-xl`}>
-                    <h3 className={`text-2xl font-bold ${textClass} mb-6`}>Quick Actions</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <button
-                        onClick={() => {
-                          setLoggerForm({ notes: '', location: '', weather: '', indoorOutdoor: 'outdoor' });
-                          setShowLogger(true);
-                        }}
-                        className="p-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all text-white"
-                      >
-                        <CheckCircle className="w-8 h-8 mx-auto mb-2" />
-                        <div className="font-semibold">Log Success</div>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLoggerForm({ notes: 'Accident', location: '', weather: '', indoorOutdoor: 'indoor' });
-                          setShowLogger(true);
-                        }}
-                        className="p-6 bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all text-white"
-                      >
-                        <XCircle className="w-8 h-8 mx-auto mb-2" />
-                        <div className="font-semibold">Log Accident</div>
-                      </button>
-                      <button
-                        onClick={() => setShowMealLogger(true)}
-                        className="p-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all text-white"
-                      >
-                        <Utensils className="w-8 h-8 mx-auto mb-2" />
-                        <div className="font-semibold">Log Meal</div>
-                      </button>
-                      <button
-                        onClick={() => setShowChat(true)}
-                        className="p-6 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all text-white"
-                      >
-                        <MessageCircle className="w-8 h-8 mx-auto mb-2" />
-                        <div className="font-semibold">AI Trainer</div>
-                      </button>
-                    </div>
-                  </div>
+            render() {
+                const root = document.getElementById('root');
+                const { darkMode, isLoading, dogs, showAddDog, showLogger, currentView, notifications } = this.state;
 
-                  <div className={`${cardClass} backdrop-blur-xl rounded-3xl p-8 shadow-xl`}>
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className={`text-2xl font-bold ${textClass}`}>Recent Activity</h3>
-                      {getIndoorAccidentRate() > 0 && (
-                        <div className="px-4 py-2 bg-red-100 rounded-xl">
-                          <div className="text-sm font-bold text-red-700">
-                            🏠 {getIndoorAccidentRate()}% Indoor
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {events.filter(e => e.dogId === selectedDog).slice(-10).reverse().map(event => (
-                        <div key={event.id} className={`flex items-start gap-4 p-4 ${darkMode ? 'bg-gray-700/50' : 'bg-gradient-to-r from-gray-50 to-white'} rounded-2xl`}>
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            event.type === 'success' ? 'bg-gradient-to-br from-emerald-400 to-teal-400' : 'bg-gradient-to-br from-red-400 to-orange-400'
-                          }`}>
-                            {event.type === 'success' ? <CheckCircle className="w-6 h-6 text-white" /> : <XCircle className="w-6 h-6 text-white" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className={`font-semibold ${textClass} mb-1`}>
-                              {event.type === 'success' ? 'Success' : 'Accident'}
-                              {event.indoorOutdoor && (
-                                <span className={`ml-2 px-3 py-1 rounded-full text-xs font-bold ${
-                                  event.indoorOutdoor === 'indoor' 
-                                    ? 'bg-red-100 text-red-700' 
-                                    : 'bg-green-100 text-green-700'
-                                }`}>
-                                  {event.indoorOutdoor === 'indoor' ? '🏠 Indoor' : '🌳 Outdoor'}
-                                </span>
-                              )}
+                const bgClass = darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50';
+                const cardClass = darkMode ? 'bg-gray-800/70' : 'bg-white/70';
+                const textClass = darkMode ? 'text-gray-100' : 'text-gray-800';
+
+                if (isLoading) {
+                    root.innerHTML = `
+                        <div class="${bgClass} min-h-screen flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="w-20 h-20 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin mx-auto mb-4"></div>
+                                <div class="text-xl font-semibold ${textClass}">Loading PawtyTime...</div>
                             </div>
-                            <div className={`text-sm ${textSecondaryClass}`}>
-                              {new Date(event.timestamp).toLocaleString()}
+                        </div>
+                    `;
+                    return;
+                }
+
+                root.innerHTML = `
+                    <div class="${bgClass} min-h-screen">
+                        <!-- Header -->
+                        <div class="sticky top-0 z-30 backdrop-blur-xl ${darkMode ? 'bg-gray-800/70' : 'bg-white/70'} border-b shadow-lg">
+                            <div class="max-w-7xl mx-auto px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                            <span class="text-white text-2xl">🐕</span>
+                                        </div>
+                                        <div>
+                                            <h1 class="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                                                PawtyTime
+                                            </h1>
+                                            <p class="text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}">AI-Powered Training</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="app.toggleDarkMode()" class="p-2.5 rounded-xl transition-all shadow-sm ${darkMode ? 'bg-gray-700 text-yellow-400' : 'bg-white/80 text-gray-600'}">
+                                            ${darkMode ? '☀️' : '🌙'}
+                                        </button>
+                                        ${dogs.length > 0 ? `
+                                            <select onchange="app.selectDog(this.value)" class="${cardClass} px-4 py-2 rounded-xl font-medium shadow-sm ${textClass}">
+                                                ${dogs.map(dog => `<option value="${dog.id}" ${dog.id === this.state.selectedDog ? 'selected' : ''}>${dog.name}</option>`).join('')}
+                                            </select>
+                                        ` : ''}
+                                    </div>
+                                </div>
                             </div>
-                            {event.notes && (
-                              <div className={`text-sm ${textSecondaryClass} mt-2`}>{event.notes}</div>
-                            )}
-                          </div>
                         </div>
-                      ))}
-                      {events.filter(e => e.dogId === selectedDog).length === 0 && (
-                        <div className="text-center py-12">
-                          <p className={textSecondaryClass}>Start tracking!</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="space-y-6">
-                  <div className="relative bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-3xl p-8 shadow-2xl text-white">
-                    <div className="text-center">
-                      <Dog className="w-20 h-20 mx-auto mb-4" />
-                      <h3 className="text-3xl font-bold mb-2">{currentDog.name}</h3>
-                      <div className="text-white/90">{currentDog.age} months • {currentDog.breed}</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={exportData}
-                      className="bg-gray-800 text-white p-4 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all font-bold"
-                    >
-                      <Download className="w-5 h-5 mx-auto mb-1" />
-                      <div className="text-xs">Export</div>
-                    </button>
-                    <button
-                      onClick={generateVetReport}
-                      className="bg-gradient-to-r from-red-600 to-pink-600 text-white p-4 rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all font-bold"
-                    >
-                      <FileText className="w-5 h-5 mx-auto mb-1" />
-                      <div className="text-xs">Vet Report</div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Schedule - WITH WORKING DONE BUTTON */}
-            {currentView === 'schedule' && (
-              <div className={`${cardClass} backdrop-blur-xl rounded-3xl p-8 shadow-xl`}>
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-                      Smart Schedule
-                    </h3>
-                    <p className={textSecondaryClass}>
-                      {customSchedules[selectedDog] ? '✏️ Custom schedule active' : `AI-optimized for ${currentDog.name}`}
-                    </p>
-                  </div>
-                  <button
-                    onClick={openScheduleEditor}
-                    className="px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-semibold"
-                  >
-                    <Edit className="w-5 h-5 inline mr-2" />
-                    Edit Schedule
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {getSchedule(currentDog).map((item, idx) => {
-                    const isCompleted = isScheduleItemCompleted(item.time);
-                    return (
-                      <div key={idx} className={`flex items-center gap-5 p-5 rounded-2xl transition-all ${
-                        isCompleted 
-                          ? darkMode ? 'bg-gray-700/30 opacity-60' : 'bg-green-50/50 opacity-70'
-                          : item.priority === 'high' 
-                            ? 'bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200' 
-                            : darkMode ? 'bg-gray-700/50' : 'bg-gradient-to-r from-blue-50 to-cyan-50'
-                      }`}>
-                        <div className={`w-28 font-bold text-lg ${isCompleted ? 'line-through text-gray-400' : 'text-blue-700'}`}>
-                          {item.time}
-                        </div>
-                        <div className="flex-1">
-                          <div className={`font-semibold ${isCompleted ? 'line-through text-gray-400' : textClass}`}>
-                            {item.reason}
-                          </div>
-                          {item.priority === 'high' && !isCompleted && (
-                            <div className="text-xs text-red-600 font-medium mt-1">High Priority</div>
-                          )}
-                          {isCompleted && (
-                            <div className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Completed
+                        <!-- Notifications -->
+                        ${notifications.length > 0 ? `
+                            <div class="bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-lg">
+                                <div class="max-w-7xl mx-auto px-6 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <span>🔔</span>
+                                        <span class="font-medium">${notifications[notifications.length - 1].message}</span>
+                                    </div>
+                                </div>
                             </div>
-                          )}
+                        ` : ''}
+
+                        <div class="max-w-7xl mx-auto px-6 py-8">
+                            ${dogs.length === 0 ? this.renderWelcome() : this.renderDashboard()}
                         </div>
-                        {isCompleted ? (
-                          <div className="px-6 py-3 bg-green-100 text-green-700 rounded-xl font-semibold flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5" /> Done
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => quickLogSuccess(`Scheduled: ${item.reason}`, item.time)}
-                            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-semibold"
-                          >
-                            Done ✓
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
-            {/* Progress */}
-            {currentView === 'progress' && (
-              <div className={`${cardClass} backdrop-blur-xl rounded-3xl p-8 shadow-xl`}>
-                <h3 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-8">
-                  7-Day Progress
-                </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={getProgressData()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="successes" stroke="#10b981" strokeWidth={3} />
-                    <Line type="monotone" dataKey="accidents" stroke="#ef4444" strokeWidth={3} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* EVENT LOGGER MODAL */}
-      {showLogger && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white/95'} backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl`}>
-            <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              Log Event
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className={`block text-sm font-bold mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  🏠 Indoor or 🌳 Outdoor?
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setLoggerForm({...loggerForm, indoorOutdoor: 'outdoor'})}
-                    className={`py-4 px-4 rounded-xl font-bold transition-all ${
-                      loggerForm.indoorOutdoor === 'outdoor'
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg scale-105'
-                        : darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    🌳 Outdoor
-                  </button>
-                  <button
-                    onClick={() => setLoggerForm({...loggerForm, indoorOutdoor: 'indoor'})}
-                    className={`py-4 px-4 rounded-xl font-bold transition-all ${
-                      loggerForm.indoorOutdoor === 'indoor'
-                        ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg scale-105'
-                        : darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    🏠 Indoor
-                  </button>
-                </div>
-              </div>
-              <select
-                value={loggerForm.location}
-                onChange={(e) => setLoggerForm({...loggerForm, location: e.target.value})}
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              >
-                <option value="">Select location</option>
-                <option value="Living Room">Living Room</option>
-                <option value="Kitchen">Kitchen</option>
-                <option value="Backyard">Backyard</option>
-                <option value="Near Door">Near Door</option>
-              </select>
-              <textarea
-                value={loggerForm.notes}
-                onChange={(e) => setLoggerForm({...loggerForm, notes: e.target.value})}
-                placeholder="Notes (optional)"
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-                rows="3"
-              />
-            </div>
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={() => {
-                  setShowLogger(false);
-                  setLoggerForm({ notes: '', location: '', weather: '', indoorOutdoor: 'outdoor' });
-                }}
-                className={`flex-1 px-6 py-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-xl font-semibold`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => logEvent('success')}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold"
-              >
-                Log Success
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SCHEDULE EDITOR MODAL */}
-      {showScheduleEditor && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white/95'} backdrop-blur-xl rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl`}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                Edit Schedule
-              </h3>
-              <button onClick={() => setShowScheduleEditor(false)}>
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="space-y-3 mb-6">
-              {editingSchedule.map((item, idx) => (
-                <div key={idx} className={`flex items-center gap-3 p-4 ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-xl`}>
-                  <input
-                    type="time"
-                    value={item.time}
-                    onChange={(e) => updateScheduleSlot(idx, 'time', e.target.value)}
-                    className={`px-3 py-2 ${darkMode ? 'bg-gray-600' : 'bg-white'} border rounded-lg`}
-                  />
-                  <input
-                    type="text"
-                    value={item.reason}
-                    onChange={(e) => updateScheduleSlot(idx, 'reason', e.target.value)}
-                    className={`flex-1 px-3 py-2 ${darkMode ? 'bg-gray-600' : 'bg-white'} border rounded-lg`}
-                  />
-                  <select
-                    value={item.priority}
-                    onChange={(e) => updateScheduleSlot(idx, 'priority', e.target.value)}
-                    className={`px-3 py-2 ${darkMode ? 'bg-gray-600' : 'bg-white'} border rounded-lg`}
-                  >
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                  <button onClick={() => removeScheduleSlot(idx)} className="text-red-500">
-                    <XCircle className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={addScheduleSlot}
-              className={`w-full py-3 mb-6 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-xl font-semibold`}
-            >
-              <Plus className="w-5 h-5 inline mr-2" />
-              Add Time Slot
-            </button>
-
-            <div className="flex gap-3">
-              <button
-                onClick={resetToAISchedule}
-                className={`flex-1 px-6 py-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-xl font-semibold`}
-              >
-                Reset to AI
-              </button>
-              <button
-                onClick={saveCustomSchedule}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold"
-              >
-                Save Schedule
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Meal Logger Modal */}
-      {showMealLogger && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white/95'} backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl`}>
-            <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-              Log Meal
-            </h3>
-            <div className="space-y-4">
-              <select
-                value={mealForm.type}
-                onChange={(e) => setMealForm({...mealForm, type: e.target.value})}
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              >
-                <option value="meal">Full Meal</option>
-                <option value="snack">Snack</option>
-                <option value="treat">Treat</option>
-              </select>
-              <input
-                value={mealForm.amount}
-                onChange={(e) => setMealForm({...mealForm, amount: e.target.value})}
-                placeholder="Amount (cups/pieces)"
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              />
-            </div>
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={() => setShowMealLogger(false)}
-                className={`flex-1 px-6 py-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-xl font-semibold`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={logMeal}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-semibold"
-              >
-                Log Meal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Dog FAB */}
-      {dogs.length > 0 && (
-        <button
-          onClick={() => setShowAddDog(true)}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-2xl shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all flex items-center justify-center z-40"
-        >
-          <Plus className="w-8 h-8" />
-        </button>
-      )}
-
-      {/* Add Dog Modal */}
-      {showAddDog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white/95'} rounded-3xl p-8 max-w-md w-full`}>
-            <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">Add Your Dog</h3>
-            <div className="space-y-4">
-              <input
-                value={dogForm.name}
-                onChange={(e) => setDogForm({...dogForm, name: e.target.value})}
-                placeholder="Dog's name"
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              />
-              <input
-                value={dogForm.breed}
-                onChange={(e) => setDogForm({...dogForm, breed: e.target.value})}
-                placeholder="Breed"
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              />
-              <input
-                value={dogForm.age}
-                onChange={(e) => setDogForm({...dogForm, age: e.target.value})}
-                type="number"
-                placeholder="Age (months)"
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              />
-              <input
-                value={dogForm.weight}
-                onChange={(e) => setDogForm({...dogForm, weight: e.target.value})}
-                type="number"
-                placeholder="Weight (lbs)"
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              />
-              <select
-                value={dogForm.size}
-                onChange={(e) => setDogForm({...dogForm, size: e.target.value})}
-                className={`w-full px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              >
-                <option value="">Select size</option>
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="large">Large</option>
-              </select>
-            </div>
-            <div className="flex gap-4 mt-8">
-              <button
-                onClick={() => setShowAddDog(false)}
-                className={`flex-1 px-6 py-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-xl font-semibold`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddDog}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold"
-              >
-                Add Dog
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AI Chat Modal */}
-      {showChat && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white/95'} backdrop-blur-xl rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl`}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                AI Trainer
-              </h3>
-              <button onClick={() => setShowChat(false)}>
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-              {chatMessages.map((msg, idx) => (
-                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] px-5 py-3 rounded-2xl ${
-                    msg.role === 'user' 
-                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white' 
-                      : darkMode ? 'bg-gray-700 text-gray-100' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              {isSending && (
-                <div className="flex justify-start">
-                  <div className={`px-5 py-3 rounded-2xl ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <div className="flex gap-2">
-                      <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                      <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                      <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                        ${showAddDog ? this.renderAddDogModal() : ''}
+                        ${showLogger ? this.renderLoggerModal() : ''}
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
+                `;
+            }
 
-            <div className="flex gap-3">
-              <input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-                placeholder="Ask about training..."
-                className={`flex-1 px-5 py-3 ${darkMode ? 'bg-gray-700' : 'bg-white/80'} border-2 rounded-xl`}
-              />
-              <button
-                onClick={sendChatMessage}
-                disabled={isSending}
-                className="px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold disabled:opacity-50"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+            renderWelcome() {
+                const { darkMode } = this.state;
+                return `
+                    <div class="text-center py-20">
+                        <div class="${darkMode ? 'bg-gray-700' : 'bg-gradient-to-br from-violet-100 to-purple-100'} w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
+                            <span class="text-6xl">🐕</span>
+                        </div>
+                        <h2 class="text-4xl font-bold mb-4 bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                            Welcome to PawtyTime!
+                        </h2>
+                        <p class="${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-8 text-lg">
+                            AI-powered dog potty training tracker
+                        </p>
+                        <button onclick="app.showAddDogModal()" class="px-8 py-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all font-semibold text-lg">
+                            ➕ Add Your Dog
+                        </button>
+                    </div>
+                `;
+            }
 
-export default App;
+            renderDashboard() {
+                const { darkMode, currentView } = this.state;
+                const dog = this.getCurrentDog();
+                const cardClass = darkMode ? 'bg-gray-800/70' : 'bg-white/70';
+                const textClass = darkMode ? 'text-gray-100' : 'text-gray-800';
+
+                return `
+                    <!-- Stats -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div class="${cardClass} backdrop-blur-xl rounded-2xl p-6 shadow-lg">
+                            <div class="text-3xl font-bold ${textClass}">${this.getSuccessRate()}%</div>
+                            <div class="text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}">Success Rate</div>
+                        </div>
+                        <div class="${cardClass} backdrop-blur-xl rounded-2xl p-6 shadow-lg">
+                            <div class="text-3xl font-bold ${textClass}">${dog?.points || 0}</div>
+                            <div class="text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}">Points</div>
+                        </div>
+                        <div class="${cardClass} backdrop-blur-xl rounded-2xl p-6 shadow-lg">
+                            <div class="text-3xl font-bold ${textClass}">${dog?.streak || 0}d</div>
+                            <div class="text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}">Streak</div>
+                        </div>
+                        <div class="${cardClass} backdrop-blur-xl rounded-2xl p-6 shadow-lg">
+                            <div class="text-3xl font-bold ${textClass}">${this.state.events.filter(e => e.dogId === this.state.selectedDog && e.type === 'success').length}</div>
+                            <div class="text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}">Successes</div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="flex gap-3 mb-8">
+                        <button onclick="app.setView('dashboard')" class="${currentView === 'dashboard' ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white' : cardClass + ' ' + textClass} px-6 py-3 rounded-xl font-semibold">
+                            🏠 Home
+                        </button>
+                        <button onclick="app.setView('schedule')" class="${currentView === 'schedule' ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white' : cardClass + ' ' + textClass} px-6 py-3 rounded-xl font-semibold">
+                            📅 Schedule
+                        </button>
+                    </div>
+
+                    ${currentView === 'dashboard' ? this.renderHome() : this.renderSchedule()}
+                `;
+            }
+
+            renderHome() {
+                const { darkMode } = this.state;
+                const dog = this.getCurrentDog();
+                const cardClass = darkMode ? 'bg-gray-800/70' : 'bg-white/70';
+                const textClass = darkMode ? 'text-gray-100' : 'text-gray-800';
+
+                return `
+                    <div class="${cardClass} backdrop-blur-xl rounded-3xl p-8 shadow-xl">
+                        <h2 class="text-2xl font-bold ${textClass} mb-6">${dog?.name}'s Dashboard</h2>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-8">
+                            <button onclick="app.showLoggerModal()" class="p-6 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl text-white font-semibold hover:shadow-2xl transform hover:scale-105 transition-all">
+                                ✅ Log Success
+                            </button>
+                            <button onclick="app.setView('schedule')" class="p-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl text-white font-semibold hover:shadow-2xl transform hover:scale-105 transition-all">
+                                📅 View Schedule
+                            </button>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h3 class="text-lg font-bold ${textClass}">Recent Activity</h3>
+                            ${this.state.events.filter(e => e.dogId === this.state.selectedDog).slice(-5).reverse().map(event => `
+                                <div class="${darkMode ? 'bg-gray-700/50' : 'bg-gradient-to-r from-gray-50 to-white'} p-4 rounded-xl">
+                                    <div class="font-semibold ${textClass}">
+                                        ${event.type === 'success' ? '✅ Success' : '❌ Accident'}
+                                        ${event.indoorOutdoor ? `<span class="ml-2 px-3 py-1 rounded-full text-xs ${event.indoorOutdoor === 'indoor' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${event.indoorOutdoor === 'indoor' ? '🏠 Indoor' : '🌳 Outdoor'}</span>` : ''}
+                                    </div>
+                                    <div class="text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}">${new Date(event.timestamp).toLocaleString()}</div>
+                                    ${event.notes ? `<div class="text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2">${event.notes}</div>` : ''}
+                                </div>
+                            `).join('') || '<p class="text-center py-8 text-gray-500">No activity yet. Start tracking!</p>'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderSchedule() {
+                const { darkMode } = this.state;
+                const dog = this.getCurrentDog();
+                const cardClass = darkMode ? 'bg-gray-800/70' : 'bg-white/70';
+                const textClass = darkMode ? 'text-gray-100' : 'text-gray-800';
+                const schedule = this.getSchedule();
+
+                return `
+                    <div class="${cardClass} backdrop-blur-xl rounded-3xl p-8 shadow-xl">
+                        <h3 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-8">
+                            Smart Schedule for ${dog?.name}
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            ${schedule.map((item, idx) => {
+                                const isCompleted = this.isScheduleItemCompleted(item.time);
+                                return `
+                                    <div class="flex items-center gap-5 p-5 rounded-2xl ${isCompleted ? (darkMode ? 'bg-gray-700/30 opacity-60' : 'bg-green-50/50 opacity-70') : (item.priority === 'high' ? 'bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200' : (darkMode ? 'bg-gray-700/50' : 'bg-gradient-to-r from-blue-50 to-cyan-50'))}">
+                                        <div class="w-28 font-bold text-lg ${isCompleted ? 'line-through text-gray-400' : 'text-blue-700'}">
+                                            ${item.time}
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="font-semibold ${isCompleted ? 'line-through text-gray-400' : textClass}">
+                                                ${item.reason}
+                                            </div>
+                                            ${item.priority === 'high' && !isCompleted ? '<div class="text-xs text-red-600 font-medium mt-1">High Priority</div>' : ''}
+                                            ${isCompleted ? '<div class="text-xs text-green-600 font-medium mt-1">✓ Completed</div>' : ''}
+                                        </div>
+                                        ${isCompleted ? `
+                                            <div class="px-6 py-3 bg-green-100 text-green-700 rounded-xl font-semibold">
+                                                ✓ Done
+                                            </div>
+                                        ` : `
+                                            <button onclick="app.quickLogSuccess('${item.reason}', '${item.time}')" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-semibold">
+                                                Done ✓
+                                            </button>
+                                        `}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderAddDogModal() {
+                const { darkMode, dogForm } = this.state;
+                return `
+                    <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div class="${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl p-8 max-w-md w-full">
+                            <h3 class="text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}">Add Your Dog</h3>
+                            <div class="space-y-4">
+                                <input id="dogName" value="${dogForm.name}" placeholder="Dog's name" class="w-full px-5 py-3 border-2 rounded-xl" />
+                                <input id="dogBreed" value="${dogForm.breed}" placeholder="Breed" class="w-full px-5 py-3 border-2 rounded-xl" />
+                                <input id="dogAge" value="${dogForm.age}" type="number" placeholder="Age (months)" class="w-full px-5 py-3 border-2 rounded-xl" />
+                                <input id="dogWeight" value="${dogForm.weight}" type="number" placeholder="Weight (lbs)" class="w-full px-5 py-3 border-2 rounded-xl" />
+                                <select id="dogSize" class="w-full px-5 py-3 border-2 rounded-xl">
+                                    <option value="">Select size</option>
+                                    <option value="small" ${dogForm.size === 'small' ? 'selected' : ''}>Small</option>
+                                    <option value="medium" ${dogForm.size === 'medium' ? 'selected' : ''}>Medium</option>
+                                    <option value="large" ${dogForm.size === 'large' ? 'selected' : ''}>Large</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-4 mt-8">
+                                <button onclick="app.closeAddDogModal()" class="flex-1 px-6 py-3 bg-gray-100 rounded-xl font-semibold">Cancel</button>
+                                <button onclick="app.submitAddDog()" class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold">Add Dog</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderLoggerModal() {
+                const { darkMode, loggerForm } = this.state;
+                return `
+                    <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div class="${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl p-8 max-w-md w-full">
+                            <h3 class="text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-800'}">Log Success</h3>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button onclick="app.setLoggerIndoorOutdoor('outdoor')" class="${loggerForm.indoorOutdoor === 'outdoor' ? 'bg-green-500 text-white scale-105' : 'bg-gray-100'} py-4 rounded-xl font-bold transition-all">
+                                        🌳 Outdoor
+                                    </button>
+                                    <button onclick="app.setLoggerIndoorOutdoor('indoor')" class="${loggerForm.indoorOutdoor === 'indoor' ? 'bg-red-500 text-white scale-105' : 'bg-gray-100'} py-4 rounded-xl font-bold transition-all">
+                                        🏠 Indoor
+                                    </button>
+                                </div>
+                                <select id="loggerLocation" class="w-full px-5 py-3 border-2 rounded-xl">
+                                    <option value="">Select location</option>
+                                    <option value="Living Room">Living Room</option>
+                                    <option value="Kitchen">Kitchen</option>
+                                    <option value="Backyard">Backyard</option>
+                                    <option value="Near Door">Near Door</option>
+                                </select>
+                                <textarea id="loggerNotes" placeholder="Notes (optional)" class="w-full px-5 py-3 border-2 rounded-xl" rows="3">${loggerForm.notes}</textarea>
+                            </div>
+                            <div class="flex gap-4 mt-6">
+                                <button onclick="app.closeLoggerModal()" class="flex-1 px-6 py-3 bg-gray-100 rounded-xl font-semibold">Cancel</button>
+                                <button onclick="app.submitLogSuccess()" class="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold">Log Success</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Event handlers
+            toggleDarkMode() {
+                this.state.darkMode = !this.state.darkMode;
+                this.saveData();
+                this.render();
+            }
+
+            selectDog(dogId) {
+                this.state.selectedDog = dogId;
+                this.render();
+            }
+
+            setView(view) {
+                this.state.currentView = view;
+                this.render();
+            }
+
+            showAddDogModal() {
+                this.state.showAddDog = true;
+                this.render();
+            }
+
+            closeAddDogModal() {
+                this.state.showAddDog = false;
+                this.state.dogForm = { name: '', breed: '', age: '', weight: '', size: '' };
+                this.render();
+            }
+
+            submitAddDog() {
+                this.state.dogForm = {
+                    name: document.getElementById('dogName').value,
+                    breed: document.getElementById('dogBreed').value,
+                    age: document.getElementById('dogAge').value,
+                    weight: document.getElementById('dogWeight').value,
+                    size: document.getElementById('dogSize').value
+                };
+                this.addDog();
+            }
+
+            showLoggerModal() {
+                this.state.showLogger = true;
+                this.render();
+            }
+
+            closeLoggerModal() {
+                this.state.showLogger = false;
+                this.state.loggerForm = { notes: '', location: '', indoorOutdoor: 'outdoor' };
+                this.render();
+            }
+
+            setLoggerIndoorOutdoor(value) {
+                this.state.loggerForm.indoorOutdoor = value;
+                this.render();
+            }
+
+            submitLogSuccess() {
+                this.state.loggerForm.location = document.getElementById('loggerLocation').value;
+                this.state.loggerForm.notes = document.getElementById('loggerNotes').value;
+                this.logSuccess();
+            }
+
+            quickLogSuccess(reason, scheduleTime) {
+                this.state.loggerForm.notes = reason;
+                this.logSuccess(scheduleTime);
+            }
+        }
+
+        // Initialize app
+        const app = new PawtyTimeApp();
+    </script>
+</body>
+</html>
