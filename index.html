@@ -20,339 +20,204 @@
         
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        #loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom right, #dbeafe, #f3e8ff);
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
-    <div id="app"></div>
+<body>
+    <div id="loading">
+        <div style="text-align: center;">
+            <div style="font-size: 80px; margin-bottom: 20px;">🐕</div>
+            <div style="font-size: 24px; font-weight: bold; color: #1f2937;">Loading PawtyTime...</div>
+        </div>
+    </div>
+    <div id="app" style="display: none;"></div>
 
     <script>
-        // State Management
-        let state = {
-            dogs: [],
-            selectedDog: null,
-            events: [],
-            darkMode: false,
-            currentView: 'dashboard',
-            showAddDog: false,
-            showChat: false,
-            showScheduleEditor: false,
-            customSchedules: {},
-            completedScheduleItems: {},
-            dogForm: { name: '', breed: '', age: '', weight: '', size: '' },
-            chatMessages: [],
-            chatInput: '',
-            isSending: false,
-            isGeneratingSchedule: false,
-            notification: null,
-            editableSchedule: []
-        };
-
-        // Storage Functions - Using localStorage
-        function loadFromStorage() {
+        console.log('Script starting...');
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+        
+        function initApp() {
+            console.log('DOM ready, initializing app...');
+            
             try {
-                const dogs = localStorage.getItem('pawty-dogs');
-                const events = localStorage.getItem('pawty-events');
-                const darkMode = localStorage.getItem('pawty-darkMode');
-                const customSchedules = localStorage.getItem('pawty-customSchedules');
-                const completedItems = localStorage.getItem('pawty-completedItems');
-
-                if (dogs) {
-                    state.dogs = JSON.parse(dogs);
-                    if (state.dogs.length > 0) state.selectedDog = state.dogs[0].id;
+                // Test localStorage
+                try {
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    console.log('localStorage is available');
+                } catch (e) {
+                    console.error('localStorage not available:', e);
+                    alert('This app requires localStorage to be enabled. Please enable it in your browser settings.');
+                    return;
                 }
-                if (events) state.events = JSON.parse(events);
-                if (darkMode) state.darkMode = JSON.parse(darkMode);
-                if (customSchedules) state.customSchedules = JSON.parse(customSchedules);
-                if (completedItems) state.completedScheduleItems = JSON.parse(completedItems);
                 
-                render();
-            } catch (error) {
-                console.error('Error loading data:', error);
-                render();
-            }
-        }
-
-        function saveToStorage() {
-            try {
-                localStorage.setItem('pawty-dogs', JSON.stringify(state.dogs));
-                localStorage.setItem('pawty-events', JSON.stringify(state.events));
-                localStorage.setItem('pawty-darkMode', JSON.stringify(state.darkMode));
-                localStorage.setItem('pawty-customSchedules', JSON.stringify(state.customSchedules));
-                localStorage.setItem('pawty-completedItems', JSON.stringify(state.completedScheduleItems));
-            } catch (error) {
-                console.error('Error saving data:', error);
-            }
-        }
-
-        // Helper Functions
-        function getCurrentDog() {
-            return state.dogs.find(d => d.id === state.selectedDog);
-        }
-
-        function getSuccessRate() {
-            const dogEvents = state.events.filter(e => e.dogId === state.selectedDog);
-            if (dogEvents.length === 0) return 0;
-            const successes = dogEvents.filter(e => e.type === 'success').length;
-            return Math.round((successes / dogEvents.length) * 100);
-        }
-
-        function showNotification(message) {
-            state.notification = message;
-            render();
-            setTimeout(() => {
-                state.notification = null;
-                render();
-            }, 3000);
-        }
-
-        function isScheduleItemCompleted(scheduleTime) {
-            const currentDog = getCurrentDog();
-            if (!currentDog) return false;
-            const today = new Date().toDateString();
-            const key = `${state.selectedDog}-${today}-${scheduleTime}`;
-            return state.completedScheduleItems[key] === true;
-        }
-
-        // AI Schedule Generation
-        function generateDefaultSchedule(dog) {
-            const age = parseInt(dog.age);
-            let schedule = [];
-            
-            if (age < 3) {
-                schedule = [
-                    { time: "07:00", reason: "Morning wake-up", priority: "high" },
-                    { time: "08:30", reason: "After breakfast", priority: "high" },
-                    { time: "10:00", reason: "Mid-morning break", priority: "medium" },
-                    { time: "12:00", reason: "After lunch", priority: "high" },
-                    { time: "14:00", reason: "After nap", priority: "medium" },
-                    { time: "16:00", reason: "After play", priority: "medium" },
-                    { time: "18:00", reason: "After dinner", priority: "high" },
-                    { time: "20:00", reason: "Before bed", priority: "high" }
-                ];
-            } else if (age < 6) {
-                schedule = [
-                    { time: "07:00", reason: "Morning wake-up", priority: "high" },
-                    { time: "09:30", reason: "After breakfast", priority: "high" },
-                    { time: "12:00", reason: "After lunch", priority: "high" },
-                    { time: "15:00", reason: "Afternoon break", priority: "medium" },
-                    { time: "18:00", reason: "After dinner", priority: "high" },
-                    { time: "21:00", reason: "Before bed", priority: "high" }
-                ];
-            } else {
-                schedule = [
-                    { time: "07:00", reason: "Morning wake-up", priority: "high" },
-                    { time: "12:00", reason: "Midday break", priority: "medium" },
-                    { time: "17:00", reason: "Evening break", priority: "medium" },
-                    { time: "21:00", reason: "Before bed", priority: "high" }
-                ];
-            }
-            
-            return schedule;
-        }
-
-        async function generateAISchedule() {
-            const currentDog = getCurrentDog();
-            if (!currentDog) return;
-            
-            state.isGeneratingSchedule = true;
-            render();
-
-            try {
-                const dogProfile = `
-Dog Profile for Schedule Generation:
-- Name: ${currentDog.name}
-- Breed: ${currentDog.breed}
-- Age: ${currentDog.age} months old
-- Weight: ${currentDog.weight} lbs
-- Size: ${currentDog.size}
-
-IMPORTANT: Base the schedule frequency on the dog's age in months:
-- Puppies under 3 months: Every 1-2 hours
-- Puppies 3-6 months: Every 2-3 hours
-- Dogs 6-12 months: Every 3-4 hours
-- Dogs over 12 months: Every 4-6 hours`;
-
-                const response = await fetch("https://api.anthropic.com/v1/messages", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "claude-sonnet-4-20250514",
-                        max_tokens: 1000,
-                        messages: [{
-                            role: "user",
-                            content: `${dogProfile}
-
-Generate a potty training schedule. Return ONLY a JSON array with this exact format:
-[
-  {"time": "07:00", "reason": "Morning wake-up", "priority": "high"},
-  {"time": "08:30", "reason": "After breakfast", "priority": "high"}
-]
-
-Use 24-hour format times (HH:MM). Base frequency on age. Include key times: after meals, after play, after naps, before bed. Return ONLY the JSON array.`
-                        }]
-                    })
-                });
-
-                const data = await response.json();
-                const textContent = data.content.find(item => item.type === 'text')?.text || '';
-                const jsonMatch = textContent.match(/\[[\s\S]*\]/);
+                // Hide loading, show app
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
                 
-                if (jsonMatch) {
-                    const newSchedule = JSON.parse(jsonMatch[0]);
-                    state.customSchedules[state.selectedDog] = newSchedule;
-                    saveToStorage();
-                    showNotification('AI schedule generated! 🤖');
+                // Initialize the app
+                startApp();
+                
+            } catch (error) {
+                console.error('Fatal error during initialization:', error);
+                document.getElementById('loading').innerHTML = '<div style="text-align: center; color: red;"><h2>Error Loading App</h2><p>' + error.message + '</p><p>Check console for details</p></div>';
+            }
+        }
+        
+        function startApp() {
+            console.log('Starting app logic...');
+            
+            // State Management
+            var state = {
+                dogs: [],
+                selectedDog: null,
+                events: [],
+                darkMode: false,
+                currentView: 'dashboard',
+                showAddDog: false,
+                showChat: false,
+                showScheduleEditor: false,
+                customSchedules: {},
+                completedScheduleItems: {},
+                dogForm: { name: '', breed: '', age: '', weight: '', size: '' },
+                chatMessages: [],
+                chatInput: '',
+                isSending: false,
+                isGeneratingSchedule: false,
+                notification: null,
+                editableSchedule: []
+            };
+
+            // Storage Functions
+            function loadFromStorage() {
+                console.log('Loading from storage...');
+                try {
+                    var dogs = localStorage.getItem('pawty-dogs');
+                    var events = localStorage.getItem('pawty-events');
+                    var darkMode = localStorage.getItem('pawty-darkMode');
+                    var customSchedules = localStorage.getItem('pawty-customSchedules');
+                    var completedItems = localStorage.getItem('pawty-completedItems');
+
+                    if (dogs) {
+                        state.dogs = JSON.parse(dogs);
+                        if (state.dogs.length > 0) state.selectedDog = state.dogs[0].id;
+                    }
+                    if (events) state.events = JSON.parse(events);
+                    if (darkMode) state.darkMode = JSON.parse(darkMode);
+                    if (customSchedules) state.customSchedules = JSON.parse(customSchedules);
+                    if (completedItems) state.completedScheduleItems = JSON.parse(completedItems);
+                    
+                    console.log('Data loaded:', { dogs: state.dogs.length, events: state.events.length });
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                }
+            }
+
+            function saveToStorage() {
+                try {
+                    localStorage.setItem('pawty-dogs', JSON.stringify(state.dogs));
+                    localStorage.setItem('pawty-events', JSON.stringify(state.events));
+                    localStorage.setItem('pawty-darkMode', JSON.stringify(state.darkMode));
+                    localStorage.setItem('pawty-customSchedules', JSON.stringify(state.customSchedules));
+                    localStorage.setItem('pawty-completedItems', JSON.stringify(state.completedScheduleItems));
+                } catch (error) {
+                    console.error('Error saving data:', error);
+                }
+            }
+
+            // Helper Functions
+            function getCurrentDog() {
+                return state.dogs.find(function(d) { return d.id === state.selectedDog; });
+            }
+
+            function getSuccessRate() {
+                var dogEvents = state.events.filter(function(e) { return e.dogId === state.selectedDog; });
+                if (dogEvents.length === 0) return 0;
+                var successes = dogEvents.filter(function(e) { return e.type === 'success'; }).length;
+                return Math.round((successes / dogEvents.length) * 100);
+            }
+
+            function showNotification(message) {
+                state.notification = message;
+                render();
+                setTimeout(function() {
+                    state.notification = null;
+                    render();
+                }, 3000);
+            }
+
+            function isScheduleItemCompleted(scheduleTime) {
+                var currentDog = getCurrentDog();
+                if (!currentDog) return false;
+                var today = new Date().toDateString();
+                var key = state.selectedDog + '-' + today + '-' + scheduleTime;
+                return state.completedScheduleItems[key] === true;
+            }
+
+            // AI Schedule Generation
+            function generateDefaultSchedule(dog) {
+                var age = parseInt(dog.age);
+                var schedule = [];
+                
+                if (age < 3) {
+                    schedule = [
+                        { time: "07:00", reason: "Morning wake-up", priority: "high" },
+                        { time: "08:30", reason: "After breakfast", priority: "high" },
+                        { time: "10:00", reason: "Mid-morning break", priority: "medium" },
+                        { time: "12:00", reason: "After lunch", priority: "high" },
+                        { time: "14:00", reason: "After nap", priority: "medium" },
+                        { time: "16:00", reason: "After play", priority: "medium" },
+                        { time: "18:00", reason: "After dinner", priority: "high" },
+                        { time: "20:00", reason: "Before bed", priority: "high" }
+                    ];
+                } else if (age < 6) {
+                    schedule = [
+                        { time: "07:00", reason: "Morning wake-up", priority: "high" },
+                        { time: "09:30", reason: "After breakfast", priority: "high" },
+                        { time: "12:00", reason: "After lunch", priority: "high" },
+                        { time: "15:00", reason: "Afternoon break", priority: "medium" },
+                        { time: "18:00", reason: "After dinner", priority: "high" },
+                        { time: "21:00", reason: "Before bed", priority: "high" }
+                    ];
                 } else {
-                    throw new Error('Invalid AI response');
+                    schedule = [
+                        { time: "07:00", reason: "Morning wake-up", priority: "high" },
+                        { time: "12:00", reason: "Midday break", priority: "medium" },
+                        { time: "17:00", reason: "Evening break", priority: "medium" },
+                        { time: "21:00", reason: "Before bed", priority: "high" }
+                    ];
                 }
-            } catch (error) {
-                console.error('AI schedule generation error:', error);
-                const fallbackSchedule = generateDefaultSchedule(currentDog);
-                state.customSchedules[state.selectedDog] = fallbackSchedule;
-                saveToStorage();
-                showNotification('Default schedule loaded');
+                
+                return schedule;
             }
 
-            state.isGeneratingSchedule = false;
-            render();
-        }
+            function generateAISchedule() {
+                var currentDog = getCurrentDog();
+                if (!currentDog) return;
+                
+                state.isGeneratingSchedule = true;
+                render();
 
-        // Event Handlers
-        function handleAddDog() {
-            const { name, breed, age, weight, size } = state.dogForm;
-            if (!name || !breed || !age || !weight || !size) {
-                showNotification('Please fill all fields');
-                return;
-            }
+                var dogProfile = 'Dog Profile: ' + currentDog.name + ', ' + currentDog.breed + ', ' + 
+                                 currentDog.age + ' months old, ' + currentDog.weight + ' lbs, ' + currentDog.size;
 
-            const newDog = {
-                id: Date.now(),
-                name, breed, 
-                age: parseInt(age), 
-                weight: parseInt(weight), 
-                size,
-                points: 0,
-                addedDate: new Date().toISOString()
-            };
-
-            state.dogs.push(newDog);
-            state.selectedDog = newDog.id;
-            state.dogForm = { name: '', breed: '', age: '', weight: '', size: '' };
-            state.showAddDog = false;
-            
-            // Generate default schedule immediately
-            const defaultSchedule = generateDefaultSchedule(newDog);
-            state.customSchedules[newDog.id] = defaultSchedule;
-            
-            saveToStorage();
-            showNotification(`${name} added! 🐕`);
-        }
-
-        function quickLogSuccess(scheduleTime = null) {
-            const now = new Date();
-            const newEvent = {
-                id: Date.now(),
-                dogId: state.selectedDog,
-                type: 'success',
-                location: 'outdoor',
-                timestamp: now.toISOString(),
-                date: now.toDateString()
-            };
-            
-            state.events.push(newEvent);
-            
-            if (scheduleTime) {
-                const today = now.toDateString();
-                const key = `${state.selectedDog}-${today}-${scheduleTime}`;
-                state.completedScheduleItems[key] = true;
-            }
-
-            const currentDog = getCurrentDog();
-            currentDog.points = (currentDog.points || 0) + 10;
-            
-            saveToStorage();
-            showNotification('Success logged! +10 points 🎉');
-        }
-
-        function quickLogAccident() {
-            const now = new Date();
-            const newEvent = {
-                id: Date.now(),
-                dogId: state.selectedDog,
-                type: 'accident',
-                location: 'indoor',
-                timestamp: now.toISOString(),
-                date: now.toDateString()
-            };
-            
-            state.events.push(newEvent);
-            saveToStorage();
-            showNotification('Accident logged');
-        }
-
-        function getCurrentSchedule() {
-            return state.customSchedules[state.selectedDog] || generateDefaultSchedule(getCurrentDog());
-        }
-
-        function openScheduleEditor() {
-            state.editableSchedule = JSON.parse(JSON.stringify(getCurrentSchedule()));
-            state.showScheduleEditor = true;
-            render();
-        }
-
-        function updateScheduleItem(idx, field, value) {
-            state.editableSchedule[idx][field] = value;
-            render();
-        }
-
-        function addScheduleItem() {
-            state.editableSchedule.push({ time: "12:00", reason: "New break", priority: "medium" });
-            render();
-        }
-
-        function removeScheduleItem(idx) {
-            state.editableSchedule.splice(idx, 1);
-            render();
-        }
-
-        function saveCustomSchedule() {
-            state.customSchedules[state.selectedDog] = [...state.editableSchedule];
-            state.showScheduleEditor = false;
-            saveToStorage();
-            showNotification('Schedule saved! ✓');
-        }
-
-        function resetToAISchedule() {
-            state.editableSchedule = generateDefaultSchedule(getCurrentDog());
-            render();
-        }
-
-        async function sendChatMessage() {
-            if (!state.chatInput.trim() || state.isSending) return;
-            
-            const currentDog = getCurrentDog();
-            const userMessage = { role: 'user', content: state.chatInput };
-            state.chatMessages.push(userMessage);
-            state.chatInput = '';
-            state.isSending = true;
-            render();
-
-            try {
-                const dogContext = currentDog ? `
-Current Dog Profile:
-- Name: ${currentDog.name}
-- Breed: ${currentDog.breed}
-- Age: ${currentDog.age} months old
-- Weight: ${currentDog.weight} lbs
-- Size: ${currentDog.size}
-- Training Days: ${Math.floor((Date.now() - new Date(currentDog.addedDate)) / (1000 * 60 * 60 * 24))} days
-- Success Rate: ${getSuccessRate()}%
-- Total Points: ${currentDog.points || 0}
-
-Please provide advice tailored to this dog's age, weight, breed, and size.` : '';
-
-                const response = await fetch("https://api.anthropic.com/v1/messages", {
+                fetch("https://api.anthropic.com/v1/messages", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -360,638 +225,545 @@ Please provide advice tailored to this dog's age, weight, breed, and size.` : ''
                         max_tokens: 1000,
                         messages: [{
                             role: "user",
-                            content: `You are an expert dog potty training coach. ${dogContext}
-
-User Question: ${userMessage.content}
-
-Provide practical, actionable advice for potty training this dog.`
+                            content: dogProfile + '\n\nGenerate a potty training schedule. Return ONLY a JSON array: [{"time": "07:00", "reason": "Morning wake-up", "priority": "high"}]'
                         }]
                     })
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    var textContent = '';
+                    for (var i = 0; i < data.content.length; i++) {
+                        if (data.content[i].type === 'text') {
+                            textContent = data.content[i].text;
+                            break;
+                        }
+                    }
+                    var jsonMatch = textContent.match(/\[[\s\S]*\]/);
+                    
+                    if (jsonMatch) {
+                        var newSchedule = JSON.parse(jsonMatch[0]);
+                        state.customSchedules[state.selectedDog] = newSchedule;
+                        saveToStorage();
+                        showNotification('AI schedule generated! 🤖');
+                    } else {
+                        throw new Error('Invalid AI response');
+                    }
+                })
+                .catch(function(error) {
+                    console.error('AI schedule error:', error);
+                    var fallbackSchedule = generateDefaultSchedule(currentDog);
+                    state.customSchedules[state.selectedDog] = fallbackSchedule;
+                    saveToStorage();
+                    showNotification('Default schedule loaded');
+                })
+                .finally(function() {
+                    state.isGeneratingSchedule = false;
+                    render();
                 });
+            }
 
-                const data = await response.json();
-                const aiResponse = data.content.find(item => item.type === 'text')?.text || 'Sorry, I could not generate a response.';
+            // Event Handlers
+            function handleAddDog() {
+                var name = state.dogForm.name;
+                var breed = state.dogForm.breed;
+                var age = state.dogForm.age;
+                var weight = state.dogForm.weight;
+                var size = state.dogForm.size;
                 
-                state.chatMessages.push({ role: 'assistant', content: aiResponse });
-            } catch (error) {
-                console.error('Chat error:', error);
-                state.chatMessages.push({ role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' });
-            }
-
-            state.isSending = false;
-            render();
-        }
-
-        // Icon Helper
-        function getIcon(name) {
-            const icons = {
-                'trending-up': '📈',
-                'award': '🏆',
-                'check-circle': '✓',
-                'calendar': '📅',
-                'edit-3': '✏️',
-                'zap': '⚡',
-                'x-circle': '✕',
-                'plus': '➕',
-                'sun': '☀️',
-                'moon': '🌙'
-            };
-            return icons[name] || '•';
-        }
-
-        // Render Function
-        function render() {
-            const app = document.getElementById('app');
-            const currentDog = getCurrentDog();
-            const currentSchedule = getCurrentSchedule();
-            const textClass = state.darkMode ? 'text-white' : 'text-gray-800';
-            const bgClass = state.darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 to-purple-50';
-
-            app.className = `min-h-screen ${bgClass} transition-colors duration-300`;
-            
-            app.innerHTML = `
-                <!-- Header -->
-                <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg">
-                    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="text-4xl">🐕</div>
-                            <div>
-                                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                    PawtyTime
-                                </h1>
-                                <p class="${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm">AI Potty Training</p>
-                            </div>
-                        </div>
-                        
-                        ${state.dogs.length > 0 ? `
-                            <select 
-                                class="px-4 py-2 ${state.darkMode ? 'bg-gray-700' : 'bg-white'} border-2 rounded-xl font-semibold ${textClass}"
-                                onchange="window.selectDog(this.value)"
-                            >
-                                ${state.dogs.map(dog => `
-                                    <option value="${dog.id}" ${dog.id === state.selectedDog ? 'selected' : ''}>
-                                        ${dog.name}
-                                    </option>
-                                `).join('')}
-                            </select>
-                        ` : ''}
-                        
-                        <button onclick="window.toggleDarkMode()" class="p-2 ${state.darkMode ? 'text-yellow-400' : 'text-gray-600'} hover:scale-110 transition-transform text-2xl">
-                            ${state.darkMode ? '☀️' : '🌙'}
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Notification -->
-                ${state.notification ? `
-                    <div class="fixed top-20 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-slideDown font-semibold">
-                        ${state.notification}
-                    </div>
-                ` : ''}
-
-                <!-- Main Content -->
-                <div class="max-w-7xl mx-auto px-4 py-8">
-                    ${!currentDog ? `
-                        <!-- Welcome Screen -->
-                        <div class="text-center py-20">
-                            <div class="text-9xl mb-6">🐕</div>
-                            <h2 class="text-4xl font-bold ${textClass} mb-4">Welcome to PawtyTime!</h2>
-                            <p class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} mb-8 text-lg">
-                                Add your first dog to get started with AI-powered potty training
-                            </p>
-                            <button 
-                                onclick="window.openAddDog()"
-                                class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:shadow-xl transition-all"
-                            >
-                                Add Your Dog
-                            </button>
-                        </div>
-                    ` : `
-                        <!-- Dashboard -->
-                        ${state.currentView === 'dashboard' ? `
-                            <!-- Stats Cards -->
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-2xl">📈</span>
-                                        <span class="text-2xl font-bold ${textClass}">${getSuccessRate()}%</span>
-                                    </div>
-                                    <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Success Rate</div>
-                                </div>
-                                
-                                <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-2xl">🏆</span>
-                                        <span class="text-2xl font-bold ${textClass}">${currentDog.points || 0}</span>
-                                    </div>
-                                    <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Training Points</div>
-                                </div>
-                                
-                                <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-2xl">✓</span>
-                                        <span class="text-2xl font-bold ${textClass}">
-                                            ${state.events.filter(e => e.dogId === state.selectedDog && e.type === 'success').length}
-                                        </span>
-                                    </div>
-                                    <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Total Successes</div>
-                                </div>
-                                
-                                <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-2xl">📅</span>
-                                        <span class="text-2xl font-bold ${textClass}">
-                                            ${Math.floor((Date.now() - new Date(currentDog.addedDate)) / (1000 * 60 * 60 * 24))}
-                                        </span>
-                                    </div>
-                                    <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Days Training</div>
-                                </div>
-                            </div>
-
-                            <!-- Navigation Tabs -->
-                            <div class="flex gap-2 mb-6 ${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-2 rounded-xl shadow-sm overflow-x-auto">
-                                ${['dashboard', 'schedule', 'progress'].map(view => `
-                                    <button
-                                        onclick="window.setView('${view}')"
-                                        class="flex-1 py-3 px-4 rounded-lg font-medium transition whitespace-nowrap ${
-                                            state.currentView === view 
-                                                ? 'bg-blue-600 text-white' 
-                                                : state.darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-50'
-                                        }"
-                                    >
-                                        ${view.charAt(0).toUpperCase() + view.slice(1)}
-                                    </button>
-                                `).join('')}
-                            </div>
-
-                            <!-- Quick Actions -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <button 
-                                    onclick="window.quickLogSuccess()"
-                                    class="p-8 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-bold text-xl hover:shadow-xl transition-all"
-                                >
-                                    ✓ Log Success
-                                </button>
-                                <button 
-                                    onclick="window.quickLogAccident()"
-                                    class="p-8 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold text-xl hover:shadow-xl transition-all"
-                                >
-                                    ✗ Log Accident
-                                </button>
-                            </div>
-
-                            <!-- AI Trainer Button -->
-                            <button 
-                                onclick="window.openChat()"
-                                class="w-full p-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-2xl font-bold text-xl hover:shadow-xl transition-all mb-6"
-                            >
-                                🤖 AI Trainer Chat
-                            </button>
-
-                            <!-- Recent Activity -->
-                            <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm">
-                                <h3 class="text-xl font-bold ${textClass} mb-4">Recent Activity</h3>
-                                <div class="space-y-3">
-                                    ${state.events
-                                        .filter(e => e.dogId === state.selectedDog)
-                                        .slice(-5)
-                                        .reverse()
-                                        .map(event => `
-                                            <div class="flex items-center justify-between py-2">
-                                                <div class="flex items-center gap-3">
-                                                    <div class="${event.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'} p-2 rounded-lg text-xl">
-                                                        ${event.type === 'success' ? '✓' : '✗'}
-                                                    </div>
-                                                    <div>
-                                                        <div class="font-semibold ${textClass}">
-                                                            ${event.type === 'success' ? 'Success' : 'Accident'}
-                                                        </div>
-                                                        <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm">
-                                                            ${new Date(event.timestamp).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('') || `<p class="${state.darkMode ? 'text-gray-400' : 'text-gray-500'}">No activity yet</p>`}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <!-- Schedule View -->
-                        ${state.currentView === 'schedule' ? `
-                            <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <h2 class="text-3xl font-bold ${textClass}">Today's Schedule</h2>
-                                <div class="flex gap-3 flex-wrap">
-                                    <button 
-                                        onclick="window.openScheduleEditor()"
-                                        class="px-6 py-3 ${state.darkMode ? 'bg-gray-700' : 'bg-white'} ${textClass} rounded-xl font-semibold hover:shadow-lg transition-all"
-                                    >
-                                        ✏️ Edit Schedule
-                                    </button>
-                                    <button 
-                                        onclick="window.generateAISchedule()"
-                                        class="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-                                        ${state.isGeneratingSchedule ? 'disabled' : ''}
-                                    >
-                                        ⚡ ${state.isGeneratingSchedule ? 'Generating...' : 'Generate AI Schedule'}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="space-y-4">
-                                ${currentSchedule.map((item, idx) => {
-                                    const isCompleted = isScheduleItemCompleted(item.time);
-                                    return `
-                                        <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-5 rounded-xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${isCompleted ? 'opacity-60' : ''}">
-                                            <div class="flex items-center gap-4 flex-1 w-full">
-                                                <div class="${
-                                                    item.priority === 'high' ? 'bg-red-100 text-red-600' :
-                                                    item.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
-                                                    'bg-green-100 text-green-600'
-                                                } px-4 py-2 rounded-lg font-bold text-lg">
-                                                    ${item.time}
-                                                </div>
-                                                <div class="flex-1">
-                                                    <div class="font-semibold ${textClass} ${isCompleted ? 'line-through' : ''}">
-                                                        ${item.reason}
-                                                    </div>
-                                                    <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm capitalize">
-                                                        ${item.priority} Priority
-                                                    </div>
-                                                    ${isCompleted ? `
-                                                        <div class="mt-1 inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-semibold">
-                                                            ✓ Completed Today
-                                                        </div>
-                                                    ` : ''}
-                                                </div>
-                                            </div>
-                                            ${!isCompleted ? `
-                                                <button
-                                                    onclick="window.handleScheduleDone('${item.time}')"
-                                                    class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-all w-full md:w-auto"
-                                                >
-                                                    Done ✓
-                                                </button>
-                                            ` : `
-                                                <div class="px-6 py-2 bg-gray-200 text-gray-600 rounded-lg font-semibold w-full md:w-auto text-center">
-                                                    Done
-                                                </div>
-                                            `}
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        ` : ''}
-
-                        <!-- Progress View -->
-                        ${state.currentView === 'progress' ? `
-                            <h2 class="text-3xl font-bold ${textClass} mb-6">Training Progress</h2>
-                            
-                            <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm mb-6">
-                                <h3 class="text-xl font-bold ${textClass} mb-4">7-Day Overview</h3>
-                                <div class="space-y-3">
-                                    ${Array.from({length: 7}, (_, i) => {
-                                        const date = new Date();
-                                        date.setDate(date.getDate() - (6 - i));
-                                        const dateStr = date.toDateString();
-                                        const dayEvents = state.events.filter(e => e.dogId === state.selectedDog && e.date === dateStr);
-                                        const successes = dayEvents.filter(e => e.type === 'success').length;
-                                        const accidents = dayEvents.filter(e => e.type === 'accident').length;
-                                        const total = successes + accidents;
-                                        const successRate = total > 0 ? Math.round((successes / total) * 100) : 0;
-                                        
-                                        return `
-                                            <div class="flex items-center justify-between p-4 ${state.darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg">
-                                                <div class="flex-1">
-                                                    <div class="font-semibold ${textClass}">${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                                                    <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">
-                                                        ${successes} successes, ${accidents} accidents
-                                                    </div>
-                                                </div>
-                                                <div class="text-2xl font-bold ${successRate >= 80 ? 'text-green-600' : successRate >= 50 ? 'text-yellow-600' : 'text-red-600'}">
-                                                    ${successRate}%
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
-
-                            <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-xl shadow-sm">
-                                <h3 class="text-xl font-bold ${textClass} mb-4">Dog Profile</h3>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Breed</div>
-                                        <div class="font-semibold ${textClass}">${currentDog.breed}</div>
-                                    </div>
-                                    <div>
-                                        <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Age</div>
-                                        <div class="font-semibold ${textClass}">${currentDog.age} months</div>
-                                    </div>
-                                    <div>
-                                        <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Weight</div>
-                                        <div class="font-semibold ${textClass}">${currentDog.weight} lbs</div>
-                                    </div>
-                                    <div>
-                                        <div class="${state.darkMode ? 'text-gray-400' : 'text-gray-600'} text-sm">Size</div>
-                                        <div class="font-semibold ${textClass} capitalize">${currentDog.size}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
-                    `}
-                </div>
-
-                <!-- Add Dog Modal -->
-                ${state.showAddDog ? `
-                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white/95'} rounded-3xl p-8 max-w-md w-full">
-                            <h3 class="text-3xl font-bold mb-6 bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                                Add Your Dog
-                            </h3>
-                            <div class="space-y-4">
-                                <input
-                                    id="dogName"
-                                    placeholder="Dog's name"
-                                    class="w-full px-5 py-3 ${state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80'} border-2 rounded-xl"
-                                    value="${state.dogForm.name}"
-                                />
-                                <input
-                                    id="dogBreed"
-                                    placeholder="Breed"
-                                    class="w-full px-5 py-3 ${state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80'} border-2 rounded-xl"
-                                    value="${state.dogForm.breed}"
-                                />
-                                <input
-                                    id="dogAge"
-                                    type="number"
-                                    placeholder="Age (months)"
-                                    class="w-full px-5 py-3 ${state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80'} border-2 rounded-xl"
-                                    value="${state.dogForm.age}"
-                                />
-                                <input
-                                    id="dogWeight"
-                                    type="number"
-                                    placeholder="Weight (lbs)"
-                                    class="w-full px-5 py-3 ${state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80'} border-2 rounded-xl"
-                                    value="${state.dogForm.weight}"
-                                />
-                                <select
-                                    id="dogSize"
-                                    class="w-full px-5 py-3 ${state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80'} border-2 rounded-xl"
-                                >
-                                    <option value="">Select size</option>
-                                    <option value="small" ${state.dogForm.size === 'small' ? 'selected' : ''}>Small</option>
-                                    <option value="medium" ${state.dogForm.size === 'medium' ? 'selected' : ''}>Medium</option>
-                                    <option value="large" ${state.dogForm.size === 'large' ? 'selected' : ''}>Large</option>
-                                </select>
-                            </div>
-                            <div class="flex gap-4 mt-8">
-                                <button
-                                    onclick="window.closeAddDog()"
-                                    class="flex-1 px-6 py-3 ${state.darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-xl font-semibold"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onclick="window.submitAddDog()"
-                                    class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold"
-                                >
-                                    Add Dog
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
-
-                <!-- Schedule Editor Modal -->
-                ${state.showScheduleEditor ? `
-                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onclick="window.closeScheduleEditor()">
-                        <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white/95'} backdrop-blur-xl rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onclick="event.stopPropagation()">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                                    Edit Schedule
-                                </h3>
-                                <button onclick="window.closeScheduleEditor()" class="${state.darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'} transition-colors text-2xl">
-                                    ✕
-                                </button>
-                            </div>
-                            
-                            <div class="space-y-3 mb-6">
-                                ${state.editableSchedule.map((item, idx) => `
-                                    <div class="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 ${state.darkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-xl">
-                                        <input
-                                            type="time"
-                                            value="${item.time}"
-                                            onchange="window.updateScheduleTime(${idx}, this.value)"
-                                            class="px-3 py-2 ${state.darkMode ? 'bg-gray-600 text-white' : 'bg-white'} border ${state.darkMode ? 'border-gray-500' : 'border-gray-200'} rounded-lg w-full md:w-auto"
-                                        />
-                                        <input
-                                            type="text"
-                                            value="${item.reason}"
-                                            onchange="window.updateScheduleReason(${idx}, this.value)"
-                                            placeholder="Reason"
-                                            class="flex-1 px-3 py-2 ${state.darkMode ? 'bg-gray-600 text-white' : 'bg-white'} border ${state.darkMode ? 'border-gray-500' : 'border-gray-200'} rounded-lg w-full"
-                                        />
-                                        <select
-                                            value="${item.priority}"
-                                            onchange="window.updateSchedulePriority(${idx}, this.value)"
-                                            class="px-3 py-2 ${state.darkMode ? 'bg-gray-600 text-white' : 'bg-white'} border ${state.darkMode ? 'border-gray-500' : 'border-gray-200'} rounded-lg w-full md:w-auto"
-                                        >
-                                            <option value="high">High</option>
-                                            <option value="medium">Medium</option>
-                                            <option value="low">Low</option>
-                                        </select>
-                                        <button
-                                            onclick="window.removeScheduleItem(${idx})"
-                                            class="p-2 text-red-500 hover:text-red-700 transition-colors text-xl w-full md:w-auto"
-                                        >
-                                            ✕ Remove
-                                        </button>
-                                    </div>
-                                `).join('')}
-                            </div>
-
-                            <button
-                                onclick="window.addScheduleItem()"
-                                class="w-full py-3 mb-6 ${state.darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${textClass} rounded-xl font-semibold transition-all"
-                            >
-                                ➕ Add Time Slot
-                            </button>
-
-                            <div class="flex flex-col md:flex-row gap-3">
-                                <button
-                                    onclick="window.resetToAISchedule()"
-                                    class="flex-1 px-6 py-3 ${state.darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'} rounded-xl hover:bg-gray-200 font-semibold transition-all"
-                                >
-                                    Reset to AI
-                                </button>
-                                <button
-                                    onclick="window.saveCustomSchedule()"
-                                    class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg font-semibold transition-all"
-                                >
-                                    Save Schedule
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
-
-                <!-- Chat Modal -->
-                ${state.showChat ? `
-                    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div class="${state.darkMode ? 'bg-gray-800' : 'bg-white/95'} backdrop-blur-xl rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                                    AI Trainer
-                                </h3>
-                                <button onclick="window.closeChat()" class="${state.darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'} transition-colors text-2xl">
-                                    ✕
-                                </button>
-                            </div>
-
-                            <div class="flex-1 overflow-y-auto mb-4 space-y-4">
-                                ${state.chatMessages.length === 0 ? `
-                                    <div class="text-center ${state.darkMode ? 'text-gray-400' : 'text-gray-500'} py-8">
-                                        <div class="text-6xl mb-4">🤖</div>
-                                        <p>Ask me anything about potty training!</p>
-                                    </div>
-                                ` : ''}
-                                ${state.chatMessages.map(msg => `
-                                    <div class="flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-                                        <div class="max-w-[80%] px-4 py-2 rounded-lg ${
-                                            msg.role === 'user'
-                                                ? 'bg-blue-600 text-white'
-                                                : state.darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-800'
-                                        }">
-                                            ${msg.content}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                                
-                                ${state.isSending ? `
-                                    <div class="flex justify-start">
-                                        <div class="${state.darkMode ? 'bg-gray-700' : 'bg-gray-100'} px-4 py-2 rounded-lg">
-                                            <div class="flex gap-1">
-                                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            </div>
-
-                            <div class="flex gap-2">
-                                <input
-                                    id="chatInput"
-                                    type="text"
-                                    placeholder="Ask about potty training..."
-                                    class="flex-1 px-4 py-2 ${state.darkMode ? 'bg-gray-700 text-white' : 'bg-white'} border rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    ${state.isSending ? 'disabled' : ''}
-                                    onkeypress="if(event.key === 'Enter') window.sendChat()"
-                                />
-                                <button
-                                    onclick="window.sendChat()"
-                                    ${state.isSending ? 'disabled' : ''}
-                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Send
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
-            `;
-        }
-
-        // Global Functions
-        window.toggleDarkMode = () => {
-            state.darkMode = !state.darkMode;
-            saveToStorage();
-            render();
-        };
-
-        window.selectDog = (dogId) => {
-            state.selectedDog = parseInt(dogId);
-            render();
-        };
-
-        window.setView = (view) => {
-            state.currentView = view;
-            render();
-        };
-
-        window.openAddDog = () => {
-            state.showAddDog = true;
-            render();
-        };
-
-        window.closeAddDog = () => {
-            state.showAddDog = false;
-            state.dogForm = { name: '', breed: '', age: '', weight: '', size: '' };
-            render();
-        };
-
-        window.submitAddDog = () => {
-            state.dogForm = {
-                name: document.getElementById('dogName').value,
-                breed: document.getElementById('dogBreed').value,
-                age: document.getElementById('dogAge').value,
-                weight: document.getElementById('dogWeight').value,
-                size: document.getElementById('dogSize').value
-            };
-            handleAddDog();
-        };
-
-        window.quickLogSuccess = () => quickLogSuccess();
-        window.quickLogAccident = () => quickLogAccident();
-        window.handleScheduleDone = (time) => quickLogSuccess(time);
-
-        window.openScheduleEditor = () => openScheduleEditor();
-        window.closeScheduleEditor = () => {
-            state.showScheduleEditor = false;
-            render();
-        };
-        window.updateScheduleTime = (idx, value) => updateScheduleItem(idx, 'time', value);
-        window.updateScheduleReason = (idx, value) => updateScheduleItem(idx, 'reason', value);
-        window.updateSchedulePriority = (idx, value) => updateScheduleItem(idx, 'priority', value);
-        window.addScheduleItem = () => addScheduleItem();
-        window.removeScheduleItem = (idx) => removeScheduleItem(idx);
-        window.saveCustomSchedule = () => saveCustomSchedule();
-        window.resetToAISchedule = () => resetToAISchedule();
-        window.generateAISchedule = () => generateAISchedule();
-
-        window.openChat = () => {
-            state.showChat = true;
-            render();
-        };
-        window.closeChat = () => {
-            state.showChat = false;
-            render();
-        };
-        window.sendChat = () => {
-            state.chatInput = document.getElementById('chatInput').value;
-            sendChatMessage();
-        };
-
-        // Cleanup old completions periodically
-        setInterval(() => {
-            const today = new Date().toDateString();
-            const filtered = {};
-            Object.keys(state.completedScheduleItems).forEach(key => {
-                if (key.includes(today)) {
-                    filtered[key] = state.completedScheduleItems[key];
+                if (!name || !breed || !age || !weight || !size) {
+                    showNotification('Please fill all fields');
+                    return;
                 }
-            });
-            if (Object.keys(filtered).length !== Object.keys(state.completedScheduleItems).length) {
-                state.completedScheduleItems = filtered;
-                saveToStorage();
-            }
-        }, 3600000); // Every hour
 
-        // Initialize
-        loadFromStorage();
+                var newDog = {
+                    id: Date.now(),
+                    name: name,
+                    breed: breed,
+                    age: parseInt(age),
+                    weight: parseInt(weight),
+                    size: size,
+                    points: 0,
+                    addedDate: new Date().toISOString()
+                };
+
+                state.dogs.push(newDog);
+                state.selectedDog = newDog.id;
+                state.dogForm = { name: '', breed: '', age: '', weight: '', size: '' };
+                state.showAddDog = false;
+                
+                var defaultSchedule = generateDefaultSchedule(newDog);
+                state.customSchedules[newDog.id] = defaultSchedule;
+                
+                saveToStorage();
+                showNotification(name + ' added! 🐕');
+            }
+
+            function quickLogSuccess(scheduleTime) {
+                var now = new Date();
+                var newEvent = {
+                    id: Date.now(),
+                    dogId: state.selectedDog,
+                    type: 'success',
+                    location: 'outdoor',
+                    timestamp: now.toISOString(),
+                    date: now.toDateString()
+                };
+                
+                state.events.push(newEvent);
+                
+                if (scheduleTime) {
+                    var today = now.toDateString();
+                    var key = state.selectedDog + '-' + today + '-' + scheduleTime;
+                    state.completedScheduleItems[key] = true;
+                }
+
+                var currentDog = getCurrentDog();
+                currentDog.points = (currentDog.points || 0) + 10;
+                
+                saveToStorage();
+                showNotification('Success logged! +10 points 🎉');
+            }
+
+            function quickLogAccident() {
+                var now = new Date();
+                var newEvent = {
+                    id: Date.now(),
+                    dogId: state.selectedDog,
+                    type: 'accident',
+                    location: 'indoor',
+                    timestamp: now.toISOString(),
+                    date: now.toDateString()
+                };
+                
+                state.events.push(newEvent);
+                saveToStorage();
+                showNotification('Accident logged');
+            }
+
+            function getCurrentSchedule() {
+                return state.customSchedules[state.selectedDog] || generateDefaultSchedule(getCurrentDog());
+            }
+
+            function openScheduleEditor() {
+                state.editableSchedule = JSON.parse(JSON.stringify(getCurrentSchedule()));
+                state.showScheduleEditor = true;
+                render();
+            }
+
+            function updateScheduleItem(idx, field, value) {
+                state.editableSchedule[idx][field] = value;
+                render();
+            }
+
+            function addScheduleItem() {
+                state.editableSchedule.push({ time: "12:00", reason: "New break", priority: "medium" });
+                render();
+            }
+
+            function removeScheduleItem(idx) {
+                state.editableSchedule.splice(idx, 1);
+                render();
+            }
+
+            function saveCustomSchedule() {
+                state.customSchedules[state.selectedDog] = state.editableSchedule.slice();
+                state.showScheduleEditor = false;
+                saveToStorage();
+                showNotification('Schedule saved! ✓');
+            }
+
+            function resetToAISchedule() {
+                state.editableSchedule = generateDefaultSchedule(getCurrentDog());
+                render();
+            }
+
+            function sendChatMessage() {
+                if (!state.chatInput.trim() || state.isSending) return;
+                
+                var currentDog = getCurrentDog();
+                var userMessage = { role: 'user', content: state.chatInput };
+                state.chatMessages.push(userMessage);
+                state.chatInput = '';
+                state.isSending = true;
+                render();
+
+                var dogContext = currentDog ? 
+                    'Dog: ' + currentDog.name + ', ' + currentDog.breed + ', ' + currentDog.age + ' months, ' + 
+                    currentDog.weight + ' lbs, ' + currentDog.size + '. Success rate: ' + getSuccessRate() + '%' : '';
+
+                fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "claude-sonnet-4-20250514",
+                        max_tokens: 1000,
+                        messages: [{
+                            role: "user",
+                            content: 'You are a dog potty training expert. ' + dogContext + '\n\nQuestion: ' + userMessage.content
+                        }]
+                    })
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    var aiResponse = 'Sorry, I could not generate a response.';
+                    for (var i = 0; i < data.content.length; i++) {
+                        if (data.content[i].type === 'text') {
+                            aiResponse = data.content[i].text;
+                            break;
+                        }
+                    }
+                    state.chatMessages.push({ role: 'assistant', content: aiResponse });
+                })
+                .catch(function(error) {
+                    console.error('Chat error:', error);
+                    state.chatMessages.push({ role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' });
+                })
+                .finally(function() {
+                    state.isSending = false;
+                    render();
+                });
+            }
+
+            // Render Function
+            function render() {
+                console.log('Rendering...');
+                var app = document.getElementById('app');
+                var currentDog = getCurrentDog();
+                var currentSchedule = getCurrentSchedule();
+                var textClass = state.darkMode ? 'text-white' : 'text-gray-800';
+                var bgClass = state.darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 to-purple-50';
+
+                app.className = 'min-h-screen ' + bgClass + ' transition-colors duration-300';
+                
+                var html = '';
+                
+                // Header
+                html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' shadow-lg">';
+                html += '<div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">';
+                html += '<div class="flex items-center gap-3">';
+                html += '<div class="text-4xl">🐕</div>';
+                html += '<div><h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">PawtyTime</h1>';
+                html += '<p class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm">AI Potty Training</p></div>';
+                html += '</div>';
+                
+                if (state.dogs.length > 0) {
+                    html += '<select class="px-4 py-2 ' + (state.darkMode ? 'bg-gray-700' : 'bg-white') + ' border-2 rounded-xl font-semibold ' + textClass + '" onchange="selectDog(this.value)">';
+                    for (var i = 0; i < state.dogs.length; i++) {
+                        var dog = state.dogs[i];
+                        html += '<option value="' + dog.id + '" ' + (dog.id === state.selectedDog ? 'selected' : '') + '>' + dog.name + '</option>';
+                    }
+                    html += '</select>';
+                }
+                
+                html += '<button onclick="toggleDarkMode()" class="p-2 ' + (state.darkMode ? 'text-yellow-400' : 'text-gray-600') + ' hover:scale-110 transition-transform text-2xl">';
+                html += state.darkMode ? '☀️' : '🌙';
+                html += '</button></div></div>';
+
+                // Notification
+                if (state.notification) {
+                    html += '<div class="fixed top-20 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl z-50 animate-slideDown font-semibold">';
+                    html += state.notification + '</div>';
+                }
+
+                // Main Content
+                html += '<div class="max-w-7xl mx-auto px-4 py-8">';
+                
+                if (!currentDog) {
+                    // Welcome Screen
+                    html += '<div class="text-center py-20">';
+                    html += '<div class="text-9xl mb-6">🐕</div>';
+                    html += '<h2 class="text-4xl font-bold ' + textClass + ' mb-4">Welcome to PawtyTime!</h2>';
+                    html += '<p class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' mb-8 text-lg">Add your first dog to get started</p>';
+                    html += '<button onclick="openAddDog()" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:shadow-xl transition-all">Add Your Dog</button>';
+                    html += '</div>';
+                } else {
+                    // Dashboard with tabs and content
+                    if (state.currentView === 'dashboard') {
+                        // Stats
+                        html += '<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">';
+                        html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-6 rounded-xl shadow-sm">';
+                        html += '<div class="flex items-center justify-between mb-2"><span class="text-2xl">📈</span><span class="text-2xl font-bold ' + textClass + '">' + getSuccessRate() + '%</span></div>';
+                        html += '<div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Success Rate</div></div>';
+                        
+                        html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-6 rounded-xl shadow-sm">';
+                        html += '<div class="flex items-center justify-between mb-2"><span class="text-2xl">🏆</span><span class="text-2xl font-bold ' + textClass + '">' + (currentDog.points || 0) + '</span></div>';
+                        html += '<div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Points</div></div>';
+                        
+                        html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-6 rounded-xl shadow-sm">';
+                        var successes = state.events.filter(function(e) { return e.dogId === state.selectedDog && e.type === 'success'; }).length;
+                        html += '<div class="flex items-center justify-between mb-2"><span class="text-2xl">✓</span><span class="text-2xl font-bold ' + textClass + '">' + successes + '</span></div>';
+                        html += '<div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Successes</div></div>';
+                        
+                        html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-6 rounded-xl shadow-sm">';
+                        var days = Math.floor((Date.now() - new Date(currentDog.addedDate)) / (1000 * 60 * 60 * 24));
+                        html += '<div class="flex items-center justify-between mb-2"><span class="text-2xl">📅</span><span class="text-2xl font-bold ' + textClass + '">' + days + '</span></div>';
+                        html += '<div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Days Training</div></div>';
+                        html += '</div>';
+                        
+                        // Tabs
+                        html += '<div class="flex gap-2 mb-6 ' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-2 rounded-xl shadow-sm overflow-x-auto">';
+                        var views = ['dashboard', 'schedule', 'progress'];
+                        for (var v = 0; v < views.length; v++) {
+                            var view = views[v];
+                            var isActive = state.currentView === view;
+                            html += '<button onclick="setView(\'' + view + '\')" class="flex-1 py-3 px-4 rounded-lg font-medium transition whitespace-nowrap ' +
+                                    (isActive ? 'bg-blue-600 text-white' : (state.darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-50')) + '">';
+                            html += view.charAt(0).toUpperCase() + view.slice(1) + '</button>';
+                        }
+                        html += '</div>';
+                        
+                        // Quick Actions
+                        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">';
+                        html += '<button onclick="quickLogSuccess()" class="p-8 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-bold text-xl hover:shadow-xl transition-all">✓ Log Success</button>';
+                        html += '<button onclick="quickLogAccident()" class="p-8 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold text-xl hover:shadow-xl transition-all">✗ Log Accident</button>';
+                        html += '</div>';
+                        
+                        html += '<button onclick="openChat()" class="w-full p-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-2xl font-bold text-xl hover:shadow-xl transition-all mb-6">🤖 AI Trainer Chat</button>';
+                    } else if (state.currentView === 'schedule') {
+                        // Schedule View
+                        html += '<div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">';
+                        html += '<h2 class="text-3xl font-bold ' + textClass + '">Today\'s Schedule</h2>';
+                        html += '<div class="flex gap-3 flex-wrap">';
+                        html += '<button onclick="openScheduleEditor()" class="px-6 py-3 ' + (state.darkMode ? 'bg-gray-700' : 'bg-white') + ' ' + textClass + ' rounded-xl font-semibold hover:shadow-lg">✏️ Edit</button>';
+                        html += '<button onclick="generateAISchedule()" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-semibold">⚡ ' + (state.isGeneratingSchedule ? 'Generating...' : 'AI Schedule') + '</button>';
+                        html += '</div></div>';
+                        
+                        html += '<div class="space-y-4">';
+                        for (var s = 0; s < currentSchedule.length; s++) {
+                            var item = currentSchedule[s];
+                            var isCompleted = isScheduleItemCompleted(item.time);
+                            var priorityClass = item.priority === 'high' ? 'bg-red-100 text-red-600' : 
+                                              item.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600';
+                            
+                            html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-5 rounded-xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ' + (isCompleted ? 'opacity-60' : '') + '">';
+                            html += '<div class="flex items-center gap-4 flex-1 w-full">';
+                            html += '<div class="' + priorityClass + ' px-4 py-2 rounded-lg font-bold text-lg">' + item.time + '</div>';
+                            html += '<div class="flex-1"><div class="font-semibold ' + textClass + ' ' + (isCompleted ? 'line-through' : '') + '">' + item.reason + '</div>';
+                            html += '<div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm capitalize">' + item.priority + ' Priority</div>';
+                            if (isCompleted) {
+                                html += '<div class="mt-1 inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-semibold">✓ Completed Today</div>';
+                            }
+                            html += '</div></div>';
+                            
+                            if (!isCompleted) {
+                                html += '<button onclick="handleScheduleDone(\'' + item.time + '\')" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-all w-full md:w-auto">Done ✓</button>';
+                            } else {
+                                html += '<div class="px-6 py-2 bg-gray-200 text-gray-600 rounded-lg font-semibold w-full md:w-auto text-center">Done</div>';
+                            }
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                    } else if (state.currentView === 'progress') {
+                        // Progress View
+                        html += '<h2 class="text-3xl font-bold ' + textClass + ' mb-6">Training Progress</h2>';
+                        html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-6 rounded-xl shadow-sm mb-6">';
+                        html += '<h3 class="text-xl font-bold ' + textClass + ' mb-4">7-Day Overview</h3>';
+                        html += '<div class="space-y-3">';
+                        
+                        for (var d = 0; d < 7; d++) {
+                            var date = new Date();
+                            date.setDate(date.getDate() - (6 - d));
+                            var dateStr = date.toDateString();
+                            var dayEvents = state.events.filter(function(e) { return e.dogId === state.selectedDog && e.date === dateStr; });
+                            var daySuccesses = dayEvents.filter(function(e) { return e.type === 'success'; }).length;
+                            var dayAccidents = dayEvents.filter(function(e) { return e.type === 'accident'; }).length;
+                            var total = daySuccesses + dayAccidents;
+                            var rate = total > 0 ? Math.round((daySuccesses / total) * 100) : 0;
+                            var rateColor = rate >= 80 ? 'text-green-600' : rate >= 50 ? 'text-yellow-600' : 'text-red-600';
+                            
+                            html += '<div class="flex items-center justify-between p-4 ' + (state.darkMode ? 'bg-gray-700' : 'bg-gray-50') + ' rounded-lg">';
+                            html += '<div class="flex-1">';
+                            html += '<div class="font-semibold ' + textClass + '">' + date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</div>';
+                            html += '<div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">' + daySuccesses + ' successes, ' + dayAccidents + ' accidents</div>';
+                            html += '</div>';
+                            html += '<div class="text-2xl font-bold ' + rateColor + '">' + rate + '%</div>';
+                            html += '</div>';
+                        }
+                        html += '</div></div>';
+                        
+                        html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white') + ' p-6 rounded-xl shadow-sm">';
+                        html += '<h3 class="text-xl font-bold ' + textClass + ' mb-4">Dog Profile</h3>';
+                        html += '<div class="grid grid-cols-2 gap-4">';
+                        html += '<div><div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Breed</div><div class="font-semibold ' + textClass + '">' + currentDog.breed + '</div></div>';
+                        html += '<div><div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Age</div><div class="font-semibold ' + textClass + '">' + currentDog.age + ' months</div></div>';
+                        html += '<div><div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Weight</div><div class="font-semibold ' + textClass + '">' + currentDog.weight + ' lbs</div></div>';
+                        html += '<div><div class="' + (state.darkMode ? 'text-gray-400' : 'text-gray-600') + ' text-sm">Size</div><div class="font-semibold ' + textClass + ' capitalize">' + currentDog.size + '</div></div>';
+                        html += '</div></div>';
+                    }
+                }
+                
+                html += '</div>';
+                
+                // Add Dog Modal
+                if (state.showAddDog) {
+                    html += '<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">';
+                    html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white/95') + ' rounded-3xl p-8 max-w-md w-full">';
+                    html += '<h3 class="text-3xl font-bold mb-6 bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">Add Your Dog</h3>';
+                    html += '<div class="space-y-4">';
+                    html += '<input id="dogName" placeholder="Dog\'s name" class="w-full px-5 py-3 ' + (state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80') + ' border-2 rounded-xl" value="' + state.dogForm.name + '">';
+                    html += '<input id="dogBreed" placeholder="Breed" class="w-full px-5 py-3 ' + (state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80') + ' border-2 rounded-xl" value="' + state.dogForm.breed + '">';
+                    html += '<input id="dogAge" type="number" placeholder="Age (months)" class="w-full px-5 py-3 ' + (state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80') + ' border-2 rounded-xl" value="' + state.dogForm.age + '">';
+                    html += '<input id="dogWeight" type="number" placeholder="Weight (lbs)" class="w-full px-5 py-3 ' + (state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80') + ' border-2 rounded-xl" value="' + state.dogForm.weight + '">';
+                    html += '<select id="dogSize" class="w-full px-5 py-3 ' + (state.darkMode ? 'bg-gray-700 text-white' : 'bg-white/80') + ' border-2 rounded-xl">';
+                    html += '<option value="">Select size</option>';
+                    html += '<option value="small">Small</option>';
+                    html += '<option value="medium">Medium</option>';
+                    html += '<option value="large">Large</option>';
+                    html += '</select></div>';
+                    html += '<div class="flex gap-4 mt-8">';
+                    html += '<button onclick="closeAddDog()" class="flex-1 px-6 py-3 ' + (state.darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' rounded-xl font-semibold">Cancel</button>';
+                    html += '<button onclick="submitAddDog()" class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold">Add Dog</button>';
+                    html += '</div></div></div>';
+                }
+                
+                // Schedule Editor Modal
+                if (state.showScheduleEditor) {
+                    html += '<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onclick="closeScheduleEditor()">';
+                    html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white/95') + ' rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">';
+                    html += '<div class="flex items-center justify-between mb-6">';
+                    html += '<h3 class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Edit Schedule</h3>';
+                    html += '<button onclick="closeScheduleEditor()" class="text-2xl">✕</button>';
+                    html += '</div>';
+                    
+                    html += '<div class="space-y-3 mb-6">';
+                    for (var e = 0; e < state.editableSchedule.length; e++) {
+                        var editItem = state.editableSchedule[e];
+                        html += '<div class="flex flex-col md:flex-row items-start md:items-center gap-3 p-4 ' + (state.darkMode ? 'bg-gray-700/50' : 'bg-gray-50') + ' rounded-xl">';
+                        html += '<input type="time" value="' + editItem.time + '" onchange="updateScheduleTime(' + e + ', this.value)" class="px-3 py-2 ' + (state.darkMode ? 'bg-gray-600 text-white' : 'bg-white') + ' border rounded-lg w-full md:w-auto">';
+                        html += '<input type="text" value="' + editItem.reason + '" onchange="updateScheduleReason(' + e + ', this.value)" class="flex-1 px-3 py-2 ' + (state.darkMode ? 'bg-gray-600 text-white' : 'bg-white') + ' border rounded-lg w-full">';
+                        html += '<select value="' + editItem.priority + '" onchange="updateSchedulePriority(' + e + ', this.value)" class="px-3 py-2 ' + (state.darkMode ? 'bg-gray-600 text-white' : 'bg-white') + ' border rounded-lg w-full md:w-auto">';
+                        html += '<option value="high"' + (editItem.priority === 'high' ? ' selected' : '') + '>High</option>';
+                        html += '<option value="medium"' + (editItem.priority === 'medium' ? ' selected' : '') + '>Medium</option>';
+                        html += '<option value="low"' + (editItem.priority === 'low' ? ' selected' : '') + '>Low</option>';
+                        html += '</select>';
+                        html += '<button onclick="removeScheduleItem(' + e + ')" class="p-2 text-red-500 text-xl">✕</button>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                    
+                    html += '<button onclick="addScheduleItem()" class="w-full py-3 mb-6 ' + (state.darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' rounded-xl font-semibold">➕ Add Time Slot</button>';
+                    html += '<div class="flex flex-col md:flex-row gap-3">';
+                    html += '<button onclick="resetToAISchedule()" class="flex-1 px-6 py-3 ' + (state.darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' rounded-xl font-semibold">Reset to AI</button>';
+                    html += '<button onclick="saveCustomSchedule()" class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold">Save Schedule</button>';
+                    html += '</div></div></div>';
+                }
+                
+                // Chat Modal
+                if (state.showChat) {
+                    html += '<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">';
+                    html += '<div class="' + (state.darkMode ? 'bg-gray-800' : 'bg-white/95') + ' rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col">';
+                    html += '<div class="flex items-center justify-between mb-6">';
+                    html += '<h3 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">AI Trainer</h3>';
+                    html += '<button onclick="closeChat()" class="text-2xl">✕</button>';
+                    html += '</div>';
+                    
+                    html += '<div class="flex-1 overflow-y-auto mb-4 space-y-4">';
+                    if (state.chatMessages.length === 0) {
+                        html += '<div class="text-center ' + (state.darkMode ? 'text-gray-400' : 'text-gray-500') + ' py-8">';
+                        html += '<div class="text-6xl mb-4">🤖</div><p>Ask me anything about potty training!</p></div>';
+                    }
+                    for (var m = 0; m < state.chatMessages.length; m++) {
+                        var msg = state.chatMessages[m];
+                        html += '<div class="flex ' + (msg.role === 'user' ? 'justify-end' : 'justify-start') + '">';
+                        html += '<div class="max-w-[80%] px-4 py-2 rounded-lg ' + 
+                                (msg.role === 'user' ? 'bg-blue-600 text-white' : (state.darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-800')) + '">';
+                        html += msg.content + '</div></div>';
+                    }
+                    if (state.isSending) {
+                        html += '<div class="flex justify-start"><div class="' + (state.darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' px-4 py-2 rounded-lg">';
+                        html += '<div class="flex gap-1">';
+                        html += '<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>';
+                        html += '<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>';
+                        html += '<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>';
+                        html += '</div></div></div>';
+                    }
+                    html += '</div>';
+                    
+                    html += '<div class="flex gap-2">';
+                    html += '<input id="chatInput" type="text" placeholder="Ask about potty training..." class="flex-1 px-4 py-2 ' + (state.darkMode ? 'bg-gray-700 text-white' : 'bg-white') + ' border rounded-lg" onkeypress="if(event.key===\'Enter\') sendChat()">';
+                    html += '<button onclick="sendChat()" class="px-6 py-2 bg-blue-600 text-white rounded-lg">Send</button>';
+                    html += '</div></div></div>';
+                }
+                
+                app.innerHTML = html;
+            }
+
+            // Global Functions
+            window.toggleDarkMode = function() {
+                state.darkMode = !state.darkMode;
+                saveToStorage();
+                render();
+            };
+
+            window.selectDog = function(dogId) {
+                state.selectedDog = parseInt(dogId);
+                render();
+            };
+
+            window.setView = function(view) {
+                state.currentView = view;
+                render();
+            };
+
+            window.openAddDog = function() {
+                state.showAddDog = true;
+                render();
+            };
+
+            window.closeAddDog = function() {
+                state.showAddDog = false;
+                state.dogForm = { name: '', breed: '', age: '', weight: '', size: '' };
+                render();
+            };
+
+            window.submitAddDog = function() {
+                state.dogForm = {
+                    name: document.getElementById('dogName').value,
+                    breed: document.getElementById('dogBreed').value,
+                    age: document.getElementById('dogAge').value,
+                    weight: document.getElementById('dogWeight').value,
+                    size: document.getElementById('dogSize').value
+                };
+                handleAddDog();
+            };
+
+            window.quickLogSuccess = function() { quickLogSuccess(); };
+            window.quickLogAccident = function() { quickLogAccident(); };
+            window.handleScheduleDone = function(time) { quickLogSuccess(time); };
+
+            window.openScheduleEditor = function() { openScheduleEditor(); };
+            window.closeScheduleEditor = function() {
+                state.showScheduleEditor = false;
+                render();
+            };
+            window.updateScheduleTime = function(idx, value) { updateScheduleItem(idx, 'time', value); };
+            window.updateScheduleReason = function(idx, value) { updateScheduleItem(idx, 'reason', value); };
+            window.updateSchedulePriority = function(idx, value) { updateScheduleItem(idx, 'priority', value); };
+            window.addScheduleItem = function() { addScheduleItem(); };
+            window.removeScheduleItem = function(idx) { removeScheduleItem(idx); };
+            window.saveCustomSchedule = function() { saveCustomSchedule(); };
+            window.resetToAISchedule = function() { resetToAISchedule(); };
+            window.generateAISchedule = function() { generateAISchedule(); };
+
+            window.openChat = function() {
+                state.showChat = true;
+                render();
+            };
+            window.closeChat = function() {
+                state.showChat = false;
+                render();
+            };
+            window.sendChat = function() {
+                state.chatInput = document.getElementById('chatInput').value;
+                sendChatMessage();
+            };
+
+            // Initialize
+            console.log('Loading data and rendering...');
+            loadFromStorage();
+            render();
+            console.log('App initialized successfully!');
+        }
     </script>
 </body>
 </html>
